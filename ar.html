@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉晶格修復任務｜AR</title>
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: #000; }
+  #ar { position: fixed; inset: 0; overflow: hidden; touch-action: manipulation; }
+  .ar-ui { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; pointer-events: none; text-align: center; padding: 20px; }
+  .ar-ui.hidden, .ar-ui.off { display: none !important; }
+  .ar-ui .msg { background: rgba(11, 31, 58, .85); padding: 12px 18px; border-radius: 16px; font-size: 18px; font-weight: 700; max-width: 92vw; }
+  .spinner { width: 64px; height: 64px; border-radius: 50%; border: 8px solid rgba(255,255,255,.2); border-top-color: #5FA98A; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scanframe { width: min(72vw, 52vh); aspect-ratio: 1; position: relative; border-radius: 18px;
+    background:
+      linear-gradient(#7ef0b4, #7ef0b4) 0 0 / 40px 6px no-repeat, linear-gradient(#7ef0b4, #7ef0b4) 0 0 / 6px 40px no-repeat,
+      linear-gradient(#7ef0b4, #7ef0b4) 100% 0 / 40px 6px no-repeat, linear-gradient(#7ef0b4, #7ef0b4) 100% 0 / 6px 40px no-repeat,
+      linear-gradient(#7ef0b4, #7ef0b4) 0 100% / 40px 6px no-repeat, linear-gradient(#7ef0b4, #7ef0b4) 0 100% / 6px 40px no-repeat,
+      linear-gradient(#7ef0b4, #7ef0b4) 100% 100% / 40px 6px no-repeat, linear-gradient(#7ef0b4, #7ef0b4) 100% 100% / 6px 40px no-repeat; }
+  .scanframe::after { content: ""; position: absolute; left: 6%; right: 6%; height: 4px; background: rgba(126, 240, 180, .85); box-shadow: 0 0 14px #7ef0b4; animation: scan 2s ease-in-out infinite; }
+  @keyframes scan { 0%, 100% { top: 6%; } 50% { top: 92%; } }
+  #ar-skip { display: none; position: fixed; left: 0; right: 0; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); z-index: 6; justify-content: center; padding: 0 16px; }
+  #ar-skip .btn { max-width: 420px; }
+  #ar-error .msg a { color: #ffd76a; }
+  #ar-error { pointer-events: auto; }
+</style>
+<!-- iOS Safari 15–16.3 不支援 importmap：以 es-module-shims 補上（支援的瀏覽器自動略過） -->
+<script async src="vendor/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="ar"></div>
+<div id="ar-loading" class="ar-ui"><div class="spinner"></div><div class="msg">正在開啟相機與載入任務卡資料……</div></div>
+<div id="ar-scanning" class="ar-ui hidden"><div class="scanframe"></div><div class="msg">把相機對準「墨玉晶格修復任務卡」</div></div>
+<div id="ar-error" class="ar-ui hidden"><div class="msg">無法開啟相機。<br>請允許相機權限，或改用<a href="play.html">沒有任務卡：直接玩</a>。</div></div>
+<div id="ar-skip"><button id="ar-skip-btn" class="btn alt" type="button">找不到卡片？改用懸浮模式直接玩</button></div>
+<div id="credit">NDHU自資系游豐兆製作</div>
+<script type="module" src="js/ar-host.js"></script>
+</body>
+</html>

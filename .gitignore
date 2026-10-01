@@ -1,0 +1,7 @@
+# 測試暫存（假相機影片、JSON 結果、列印預覽）
+tools/out/
+# 自動通關原始截圖（體積大，留在本機；repo 內只收縮圖總表 tools/shots/sheets/）
+tools/shots/*.png
+__pycache__/
+*.pyc
+*.y4m

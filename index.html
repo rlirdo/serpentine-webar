@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉晶格修復任務｜WebAR 科學遊戲</title>
+<meta name="description" content="用手機掃描任務卡，跟墨玉小晶一起完成蛇紋石材料實驗八步驟的 WebAR 科學遊戲。">
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: radial-gradient(130% 90% at 50% 0%, #14507a 0%, #0b2a47 50%, #071629 100%); }
+  .hero { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+  .hero svg { flex: 0 0 auto; filter: drop-shadow(0 6px 14px rgba(63, 209, 139, .35)); animation: bob 3s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+  .kicker { color: #7ef0b4; font-weight: 700; letter-spacing: 2px; font-size: 16px; }
+  ol.steps { margin: 6px 0 0; padding-left: 22px; line-height: 1.7; }
+  .note { font-size: 16px; color: #cfe8df; line-height: 1.6; }
+  .note b { color: #ffd0bd; }
+</style>
+</head>
+<body>
+<div class="page"><div class="page-inner">
+  <div class="kicker">WEBAR · 科學小任務</div>
+  <div class="hero">
+    <svg width="76" height="92" viewBox="0 0 54 64" aria-hidden="true"><polygon points="27,2 50,18 50,46 27,62 4,46 4,18" fill="#2e8b57" stroke="#c8ffe2" stroke-width="1.5"/><polygon points="27,2 50,18 27,24 4,18" fill="#3fa56b"/><ellipse cx="19" cy="34" rx="4.5" ry="5.5" fill="#fff"/><ellipse cx="35" cy="34" rx="4.5" ry="5.5" fill="#fff"/><circle cx="19.5" cy="35" r="2.6" fill="#0b1f3a"/><circle cx="35.5" cy="35" r="2.6" fill="#0b1f3a"/><path d="M21 44 Q27 49 33 44" stroke="#0b1f3a" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+    <div>
+      <div class="hero-title">墨玉晶格修復任務</div>
+      <div class="hero-en">Serpentine Lattice Repair · WebAR</div>
+    </div>
+  </div>
+  <p class="lead">我是墨玉小晶，來自花蓮的蛇紋石。我是在地撿石人無償提供的閒置蛇紋石（墨玉）。<br>跟我一起完成 8 個實驗步驟，看看沒人要的石頭能不能變成有用的材料！</p>
+
+  <div class="stack">
+    <a class="btn gold" href="ar.html">📷 開始 AR（開相機）</a>
+    <a class="btn alt" href="play.html">🎮 沒有任務卡：直接玩</a>
+    <a class="btn ghost" href="card.html">🖼️ 顯示任務卡</a>
+  </div>
+
+  <div class="card-box">
+    <b>怎麼玩？</b>
+    <ol class="steps">
+      <li>用另一台裝置打開〔顯示任務卡〕，或把任務卡印出來。</li>
+      <li>按〔開始 AR〕，允許使用相機。</li>
+      <li>把相機對準任務卡，跟著墨玉小晶闖 8 關！</li>
+    </ol>
+    <p class="note">手不穩、卡片跑出畫面也沒關係，小晶會改成「懸浮模式」陪你玩完。</p>
+  </div>
+
+  <div class="card-box note">
+    <b>科學小提醒：</b>遊戲裡「深層海水的 Mg²⁺ 補進晶格、讓石頭放出更多遠紅外線（看不見的光／熱輻射）」是研究團隊的工作假設，還要用 FTIR、XRD、XPS 與放射率量測來驗證。<br>
+    <b>隱私：</b>不需要輸入姓名或學號；測驗結果只存在這台裝置，不會上傳。
+  </div>
+
+  <div class="foot-links"><a href="teacher.html">教師頁（本機作答統計）</a></div>
+</div></div>
+<div id="credit">NDHU自資系游豐兆製作</div>
+</body>
+</html>

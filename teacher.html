@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉晶格修復任務｜教師頁</title>
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: #F5F9FA; color: #1E293B; }
+  .page-inner { max-width: 960px; }
+  h1 { color: #0B1F3A; font-size: 26px; margin: 8px 0 2px; }
+  h2 { color: #0B1F3A; font-size: 20px; margin: 22px 0 8px; border-left: 5px solid #1C7293; padding-left: 10px; }
+  .kick { color: #1C7293; font-weight: 800; letter-spacing: 2px; font-size: 16px; }
+  .sub { color: #64748B; font-size: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+  .tile .v { font-size: 26px; font-weight: 800; color: #2E7D5B; }
+  .tile .l { font-size: 16px; color: #64748B; }
+  .tablewrap { overflow-x: auto; background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+  th { background: #0B1F3A; color: #fff; font-weight: 700; white-space: nowrap; }
+  .bar { height: 12px; border-radius: 6px; background: #e2e8f0; overflow: hidden; min-width: 80px; }
+  .bar i { display: block; height: 100%; background: #1C7293; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .row .btn { flex: 0 1 auto; }
+  .empty { padding: 16px; color: #64748B; }
+  .note { font-size: 16px; color: #64748B; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="page"><div class="page-inner">
+  <div class="kick">TEACHER · 教師頁</div>
+  <h1>墨玉晶格修復任務：本機作答統計</h1>
+  <p class="sub">資料只存在這台裝置的瀏覽器（localStorage），不會上傳，也沒有姓名或學號。</p>
+  <div class="row">
+    <button class="btn alt" id="csv" type="button">匯出 CSV</button>
+    <button class="btn ghost" id="clear" type="button" style="color:#0B1F3A;border-color:#94a3b8">清除本機紀錄</button>
+    <a class="btn gold" href="index.html">回首頁</a>
+  </div>
+
+  <h2>總覽</h2>
+  <div class="tiles" id="tiles"></div>
+
+  <h2>四個面向（後測平均）</h2>
+  <div class="tablewrap"><table id="facets"></table></div>
+
+  <h2>各題答對率</h2>
+  <div class="tablewrap"><table id="items"></table></div>
+
+  <h2>行動承諾分布</h2>
+  <div class="tablewrap"><table id="commits"></table></div>
+
+  <h2>作答紀錄</h2>
+  <div class="tablewrap"><table id="records"></table></div>
+
+  <h2>課程與評量對照表</h2>
+  <div class="tablewrap"><table id="map"></table></div>
+  <p class="note">對應的課綱議題為學習主題層級（自然科學：物質與能量、科學探究；環境教育：環境倫理、永續發展、能源資源永續利用），實際條目請教師依授課年段核對。<br>
+  科學誠實：離子交換／晶格修復與遠紅外線增強是研究團隊的工作假設，尚待 FTIR／XRD／XPS 與放射率量測驗證；遊戲中的光譜為簡化示意圖。</p>
+</div></div>
+<div id="credit">NDHU自資系游豐兆製作</div>
+<script type="module">
+import { BANK, LEVELS, FACETS, FACET_NAMES, GRADE_LABEL, STORE_KEY, ENDING } from "./js/content.js";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const load = () => { try { return JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); } catch (e) { return []; } };
+const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const pct = (v) => `${Math.round(v * 100)}%`;
+const bar = (v) => `<div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div>`;
+const allQ = {};
+Object.entries(BANK).forEach(([g, qs]) => qs.forEach((q) => { allQ[q.id] = { ...q, grade: g }; }));
+
+function render() {
+  const recs = load();
+  const n = recs.length;
+  $("#tiles").innerHTML = [
+    ["作答筆數", n],
+    ["國小版／國中版", `${recs.filter((r) => r.grade === "elem").length}／${recs.filter((r) => r.grade === "junior").length}`],
+    ["前測平均（3 題）", n ? avg(recs.map((r) => r.preScore)).toFixed(2) : "—"],
+    ["後測同題平均（3 題）", n ? avg(recs.map((r) => r.postSame3)).toFixed(2) : "—"],
+    ["後測平均（5 題）", n ? avg(recs.map((r) => r.postScore)).toFixed(2) : "—"],
+    ["平均星數（24）", n ? avg(recs.map((r) => r.totalStars)).toFixed(1) : "—"],
+  ].map(([l, v]) => `<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+
+  $("#facets").innerHTML = `<tr><th>面向</th><th>平均</th><th style="width:50%"></th></tr>` +
+    FACETS.map((f) => { const v = avg(recs.map((r) => (r.facets?.[f] ?? 0) / 100)); return `<tr><td>${FACET_NAMES[f]}</td><td>${n ? pct(v) : "—"}</td><td>${bar(n ? v : 0)}</td></tr>`; }).join("");
+
+  const stat = {};
+  recs.forEach((r) => {
+    (r.pre || []).forEach((a) => { (stat[a.id] ||= { pre: [], post: [] }).pre.push(a.correct ? 1 : 0); });
+    (r.post || []).forEach((a) => { (stat[a.id] ||= { pre: [], post: [] }).post.push(a.correct ? 1 : 0); });
+  });
+  const ids = Object.keys(stat).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  $("#items").innerHTML = `<tr><th>題號</th><th>版本</th><th>面向</th><th>題目</th><th>前測答對率</th><th>後測答對率</th></tr>` +
+    (ids.length ? ids.map((id) => { const q = allQ[id] || {}; const s = stat[id];
+      return `<tr><td>${id}</td><td>${GRADE_LABEL[q.grade] || ""}</td><td>${FACET_NAMES[q.facet] || ""}</td><td>${esc(q.q)}</td>
+        <td>${s.pre.length ? `${pct(avg(s.pre))}（${s.pre.length}）` : "—"}</td><td>${s.post.length ? `${pct(avg(s.post))}（${s.post.length}）` : "—"}</td></tr>`; }).join("")
+      : `<tr><td colspan="6" class="empty">還沒有作答紀錄。請學生在這台裝置完成遊戲後再回來查看。</td></tr>`);
+
+  $("#commits").innerHTML = `<tr><th>行動承諾</th><th>人次</th><th style="width:50%"></th></tr>` +
+    ENDING.commits.map((c) => { const k = recs.filter((r) => r.commit === c).length; return `<tr><td>${c}</td><td>${k}</td><td>${bar(n ? k / n : 0)}</td></tr>`; }).join("");
+
+  $("#records").innerHTML = `<tr><th>#</th><th>時間</th><th>版本</th><th>前測</th><th>後測同題</th><th>後測</th><th>星數</th><th>行動承諾</th></tr>` +
+    (n ? recs.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(new Date(r.time).toLocaleString("zh-TW"))}</td><td>${GRADE_LABEL[r.grade] || ""}</td>
+      <td>${r.preScore}/3</td><td>${r.postSame3}/3</td><td>${r.postScore}/5</td><td>${r.totalStars}/24</td><td>${esc(r.commit)}</td></tr>`).join("")
+      : `<tr><td colspan="8" class="empty">沒有紀錄。</td></tr>`);
+
+  const qByFacet = (g, f) => BANK[g].filter((q) => q.facet === f).map((q) => q.id).join("、");
+  const facetOf = ["知識", "知識", "態度", "知識", "知識", "行動", "態度", "探究"];
+  $("#map").innerHTML = `<tr><th>關</th><th>流程步驟</th><th>學到什麼（國中版）</th><th>主要面向</th><th>相關題號（國小／國中）</th></tr>` +
+    LEVELS.map((L, i) => `<tr><td>${i + 1}</td><td>${esc(L.step)}</td><td>${esc(L.learn.junior)}</td><td>${FACET_NAMES[facetOf[i]]}</td>
+      <td>${qByFacet("elem", facetOf[i])}<br>${qByFacet("junior", facetOf[i])}</td></tr>`).join("") +
+    `<tr><td>前後測</td><td>前測 3 題、後測 5 題（含同樣 3 題）</td><td>比較同題進步；後測另抽行動題 1 題與其他題 1 題</td><td>四面向</td><td>前測：E1–E3／J1–J3</td></tr>`;
+}
+
+function csv() {
+  const recs = load();
+  const head = ["序號", "時間", "版本", "前測(3)", "後測同題(3)", "後測(5)", "星數(24)", "環境知識%", "環境態度%", "行動意向%", "科學探究%", "行動承諾", "前測作答", "後測作答", "各關星數"];
+  const rows = recs.map((r, i) => [i + 1, r.time, GRADE_LABEL[r.grade] || r.grade, r.preScore, r.postSame3, r.postScore, r.totalStars,
+    ...FACETS.map((f) => r.facets?.[f] ?? ""), r.commit || "",
+    (r.pre || []).map((a) => `${a.id}:${a.correct ? 1 : 0}`).join(" "), (r.post || []).map((a) => `${a.id}:${a.correct ? 1 : 0}`).join(" "), (r.stars || []).join(" ")]);
+  const text = [head, ...rows].map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `墨玉晶格修復任務_作答紀錄_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$("#csv").addEventListener("click", csv);
+$("#clear").addEventListener("click", () => {
+  if (confirm("確定要清除這台裝置上的所有作答紀錄嗎？清除後無法復原。")) { localStorage.removeItem(STORE_KEY); render(); }
+});
+render();
+</script>
+</body>
+</html>

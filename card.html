@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉晶格修復任務｜任務卡</title>
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: #0b1f3a; }
+  .bar { position: fixed; left: 0; right: 0; top: 0; display: flex; gap: 8px; padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px; z-index: 5; background: rgba(11, 31, 58, .9); }
+  .bar .btn { flex: 1 1 0; font-size: 16px; }
+  .wrap { position: fixed; left: 0; right: 0; top: calc(72px + env(safe-area-inset-top, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; padding: 8px; }
+  .wrap img { max-width: 100%; max-height: 100%; aspect-ratio: 1; object-fit: contain; background: #fff; border-radius: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+  .hint { position: fixed; left: 10px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); font-size: 16px; color: #cfe8df; max-width: calc(100% - 200px); }
+  @media print {
+    .bar, .hint { display: none; }
+    .wrap { position: static; padding: 0; }
+    .wrap img { width: 12cm; height: 12cm; box-shadow: none; }
+    body { background: #fff; overflow: visible; }
+    #credit { position: static; display: block; text-align: right; background: none; color: #000; margin-top: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="btn ghost" href="index.html">← 首頁</a>
+  <a class="btn gold" href="assets/target_print.pdf" target="_blank" rel="noopener">🖨️ 列印任務卡（PDF）</a>
+</div>
+<div class="wrap"><img src="assets/target.png" alt="墨玉晶格修復任務卡：蛇紋石紋理、六角晶格與墨玉小晶圖像"></div>
+<div class="hint">把螢幕亮度調高，用另一台手機掃描。</div>
+<div id="credit">NDHU自資系游豐兆製作</div>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉晶格修復任務｜直接玩</title>
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  body { background: radial-gradient(120% 80% at 50% 30%, #12456b 0%, #0b2a47 45%, #071629 100%); }
+  #view { position: fixed; inset: 0; touch-action: none; }
+  #view canvas { display: block; }
+</style>
+<!-- iOS Safari 15–16.3 不支援 importmap：以 es-module-shims 補上（支援的瀏覽器自動略過） -->
+<script async src="vendor/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div id="credit">NDHU自資系游豐兆製作</div>
+<script type="module" src="js/play-host.js"></script>
+</body>
+</html>
