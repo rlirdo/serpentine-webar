@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_DIRS = {".git", "vendor", "out", "__pycache__", "shots"}
-TEXT_EXT = {".html", ".js", ".css", ".py", ".md", ".txt", ".json", ".gitignore", ".nojekyll", ""}
+SKIP_DIRS = {".git", "vendor", "out", "__pycache__", "shots", "build", "dist"}
+TEXT_EXT = {".html", ".js", ".css", ".py", ".md", ".txt", ".json", ".spec", ".gitignore", ".nojekyll", ""}
 
 def u(*cps):
     return "".join(chr(c) for c in cps)
@@ -40,7 +40,8 @@ BODY_CLAIMS = [u(0x7642, 0x6548),
                u(0x8212, 0x7de9),
                u(0x75c5)]
 URL_RE = re.compile(r"https?://[^\s\"'<>)]+")
-URL_ALLOW = ("https://rlirdo.github.io/serpentine-webar", "http://127.0.0.1", "http://localhost")
+URL_ALLOW = ("https://rlirdo.github.io/serpentine-webar", "https://github.com/rlirdo/serpentine-webar",
+             "http://127.0.0.1", "http://localhost")
 
 
 def files():
@@ -71,7 +72,7 @@ def main():
             for url in URL_RE.findall(line):
                 if not url.startswith(URL_ALLOW):
                     hits.append((rel, i, "外部網址", url))
-    print(f"檢查檔案數：{n}（略過 vendor/、tools/out/、tools/shots/、.git/）")
+    print(f"檢查檔案數：{n}（略過 vendor/、tools/out/、tools/shots/、launcher/build|dist、.git/）")
     if hits:
         for h in hits:
             print("  HIT", *h)

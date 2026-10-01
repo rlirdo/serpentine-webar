@@ -94,3 +94,59 @@ PYTHONUTF8=1 python tools/grep_check.py
 - 音效（WebAudio）在 headless 只確認沒有錯誤，無法聽實際聲音。
 - QR 碼指向階段二才會部署的 `https://rlirdo.github.io/serpentine-webar/`，部署前掃描會打不開。
 - `assets/target.png` 約 2.2 MB（為了保留追蹤特徵點，沒有壓縮），手機首次載入會稍慢。
+
+---
+
+# 自我測試報告（階段二：GitHub Pages 部署與 exe 啟動器）
+
+- 測試日期：2026/10/01；環境同階段一（Windows 11、Python 3.13、Chrome headless=new＋SwiftShader）。
+- 測試腳本已改成可指定網址：`tools/autoplay_test.py [視窗] --base URL --tag 名稱`、`tools/selftest_ar.py --base URL --tag 名稱`。
+  - 指定 `--base` 時不起本機 devserver；AR 測試改用 CDP `Fetch` 攔截頁面送出的 `/__report`（線上與 exe 伺服器都沒有這個端點），頁面程式不需修改。
+  - 通關測試另以 CDP `Network.requestWillBeSent` 記錄頁面發出的每一個請求，列出 base 以外的外部請求。
+
+## 5. 線上部署（https://rlirdo.github.io/serpentine-webar/）— 通過
+
+- 公開 repo：<https://github.com/rlirdo/serpentine-webar>。GitHub Pages 的來源設為 main 分支根目錄，強制 HTTPS。
+- 推送後約 46 秒，首頁回應 200。以 HTTPS 逐一請求 21 個主要檔案，全部 200，類型如下：
+  - html：`text/html`
+  - js：`application/javascript`
+  - `assets/targets.mind`（929,767 bytes）：`application/octet-stream`
+  - vendor 內 three／MindAR／es-module-shims 都取得成功
+- **線上自動通關**：`play.html?autoplay=1`，桌機 1280×720，國小版。
+  - 結果：81 個畫面，抵達結果頁，耗時 135 s。console error 0，製作者字樣問題 0，出界 0。
+  - 請求共 18 筆：`rlirdo.github.io` 17 筆、`blob:` 1 筆。外部請求 0 筆。
+- **線上 AR 假相機**：`ar.html?selftest=1`。
+  - 2.1 s 取得 **targetFound**（已完成首幀渲染）；之後依序出現 floatMode（在可視範圍內）、reattached。
+  - 頁面例外 0。截圖：`tools/shots/online_ar_*.png`。
+- **QR 解碼**：`tools/verify_qr.py`，用 OpenCV `QRCodeDetector` 解碼；PDF 先用 PyMuPDF 轉成 300 dpi 點陣再解碼。`assets/qr.png` 與 `assets/target_print.pdf` 第 1 頁都解出 `https://rlirdo.github.io/serpentine-webar/`。
+
+## 6. exe 啟動器（launcher/）— 通過
+
+- 建置：
+  ```
+  python -m PyInstaller --noconfirm --clean --distpath launcher/dist --workpath launcher/build launcher/build.spec
+  ```
+  - 產出 onefile、無主控台的 `SerpentineWebAR.exe`，再改名為 `墨玉晶格修復任務WebAR.exe`。
+  - 遊戲網頁完整打包在 exe 內的 `web/`；圖示由 `assets/icon.png` 轉成 ico。
+- **精簡環境 `--selftest`**：
+  - 條件：把 exe 複製到另一個資料夾；PATH 只有 `C:\Windows\System32;C:\Windows`，沒有任何 PYTHON* 變數。
+  - 結果：exit code 0。29 個檢查項目全部 OK：28 個檔案都是 200 且 MIME 正確（.js 為 `text/javascript`、.mind 為 `application/octet-stream`），根目錄 `/` 也回 200。
+  - log 寫在 exe 同層。`--version` 的 exit code 為 0。
+- **實際啟動 `--no-browser`**：伺服器在 127.0.0.1:8731（優先固定埠）。
+  - 啟動頁 `launcher.html`：
+    - 1280×720 與 1920×1080 都剛好一頁，沒有捲動，也沒有水平出界。
+    - 任務卡圖與 QR 都載入成功。任務卡寬 484／772 px，QR 寬 151／227 px。
+    - 製作者字樣在視窗內、z-index 最高，不與按鈕重疊。截圖已看過。
+  - 通關 `play.html?autoplay=1`（1280×720）：81 個畫面，抵達結果頁，console error 0。
+  - AR `ar.html?selftest=1`：1.7 s targetFound，之後出現 floatMode、reattached，例外 0。
+  - 控制視窗：截圖看過標題、目前網址、〔重新開啟頁面〕〔結束遊戲〕，右下有製作者字樣。
+  - 結束：送 WM_CLOSE 給控制視窗，等同按 X。bootloader exit code 0；之後 tasklist 查無同名行程，原埠不再回應。
+- **斷網情境（電腦版不得有外部請求）**：
+  - 瀏覽器端：play.html 通關全程 18 筆請求，`127.0.0.1:8731` 17 筆、`blob:` 1 筆，外部請求 0 筆。啟動頁的外部請求也是 0 筆。
+  - 伺服器端：launcher.log 記錄 46 筆 http 請求，來源全部是 127.0.0.1。
+
+## 已知限制（階段二）
+
+- exe 沒有數位簽章，首次執行會出現 SmartScreen 警告（使用說明已寫處理方式）。
+- 作答紀錄依瀏覽器 origin 分開存放。exe 優先使用 8731 埠，被占用時會改用其他埠，這時候就看不到先前的紀錄。
+- 線上版與 exe 都只在 headless Chrome 測試，仍未在實體手機上測試。

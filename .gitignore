@@ -5,3 +5,8 @@ tools/shots/*.png
 __pycache__/
 *.pyc
 *.y4m
+# 啟動器建置產物（exe 不進 repo）
+launcher/build/
+launcher/dist/
+*.exe
+*_selftest.log

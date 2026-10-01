@@ -8,8 +8,12 @@
 3. 頁面在 targetFound 且完成首幀渲染後 POST 回報；另回報 targetLost／floatMode／reattached。
    每個事件以 CDP 截圖存 tools/shots/ar_*.png，結果寫 tools/out/selftest_ar.json。
 
-用法：PYTHONUTF8=1 python tools/selftest_ar.py
+用法：PYTHONUTF8=1 python tools/selftest_ar.py [--base URL] [--tag 名稱]
+- 不指定 --base：起本機 tools/devserver.py，頁面 POST /__report 由伺服器收。
+- 指定 --base（線上 GitHub Pages 或 exe 提供的本機網址）：伺服器沒有 /__report，
+  改用 CDP Fetch 攔截頁面送出的 /__report 請求、讀出內容後直接回 200，頁面程式不需修改。
 """
+import base64
 import json
 import queue
 import sys
@@ -95,15 +99,48 @@ def write_y4m(path, seconds=18):
     return area
 
 
-def main(timeout=240):
+class FetchReports:
+    """以 CDP Fetch 攔截 /__report：取出 POST 內容放進佇列，並回 200。"""
+
+    def __init__(self, ch):
+        self.ch, self.i, self.q = ch, 0, queue.Queue()
+        ch.send("Fetch.enable", {"patterns": [{"urlPattern": "*/__report*", "requestStage": "Request"}]})
+
+    def get(self, timeout=1):
+        end = time.time() + timeout
+        while self.q.empty() and time.time() < end:
+            self.ch.poll_events(0.2)
+            self._drain()
+        if self.q.empty():
+            raise queue.Empty
+        return self.q.get_nowait()
+
+    def _drain(self):
+        while self.i < len(self.ch.events):
+            ev = self.ch.events[self.i]
+            self.i += 1
+            if ev.get("method") != "Fetch.requestPaused":
+                continue
+            p = ev["params"]
+            try:
+                self.q.put(json.loads(p["request"].get("postData", "{}")))
+            except Exception:
+                self.q.put({"raw": p["request"].get("postData")})
+            self.ch.send("Fetch.fulfillRequest", {"requestId": p["requestId"], "responseCode": 200,
+                                                  "body": base64.b64encode(b"ok").decode()})
+
+
+def main(timeout=240, base=None, tag=""):
     OUT.mkdir(parents=True, exist_ok=True)
     SHOTS.mkdir(parents=True, exist_ok=True)
-    for old in SHOTS.glob("ar_*.png"):
+    pre = f"{tag}_ar_" if tag else "ar_"
+    for old in SHOTS.glob(f"{pre}*.png"):
         old.unlink()
     video = OUT / "fake_cam.y4m"
     area = write_y4m(video)
     print(f"fake video: {video} ({video.stat().st_size // 1024} KB), card area ≈ {area:.0%}")
-    srv = devserver.start(8767)
+    srv = None if base else devserver.start(8767)
+    base = (base or "http://127.0.0.1:8767/").rstrip("/") + "/"
     ch = Chrome(port=9336, width=W, height=H, extra_args=[
         "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream",
         f"--use-file-for-fake-video-capture={video}"])
@@ -113,12 +150,13 @@ def main(timeout=240):
         ch.send("Page.enable")
         ch.send("Runtime.enable")
         ch.set_viewport(W, H)
-        ch.send("Page.navigate", {"url": "http://127.0.0.1:8767/ar.html?selftest=1"})
+        reports = srv.reports if srv else FetchReports(ch)
+        ch.send("Page.navigate", {"url": f"{base}ar.html?selftest=1"})
         t0 = time.time()
         need = {"targetFound", "floatMode", "reattached"}
         while time.time() - t0 < timeout and need:
             try:
-                r = srv.reports.get(timeout=1)
+                r = reports.get(timeout=1)
             except queue.Empty:
                 continue
             r["wall"] = round(time.time() - t0, 1)
@@ -127,7 +165,7 @@ def main(timeout=240):
             ev = r.get("event")
             if ev in ("targetFound", "floatMode", "reattached", "targetLost"):
                 time.sleep(0.4)
-                fn = f"ar_{len(shots) + 1:02d}_{ev}.png"
+                fn = f"{pre}{len(shots) + 1:02d}_{ev}.png"
                 ch.screenshot(str(SHOTS / fn))
                 shots[fn] = ev
                 need.discard(ev)
@@ -135,30 +173,38 @@ def main(timeout=240):
                 print("頁面錯誤：", r)
         # 再等幾秒看遊戲開場畫面
         time.sleep(2)
-        ch.screenshot(str(SHOTS / f"ar_{len(shots) + 1:02d}_after.png"))
+        ch.screenshot(str(SHOTS / f"{pre}{len(shots) + 1:02d}_after.png"))
         state = ch.eval("JSON.stringify(window.__arState)")
         ch.poll_events(0.3)
         errs = [e for e in ch.events if e.get("method") == "Runtime.exceptionThrown"]
     finally:
         ch.close()
-        srv.shutdown()
+        if srv:
+            srv.shutdown()
     found = next((e for e in events if e.get("event") == "targetFound"), None)
     floatm = next((e for e in events if e.get("event") == "floatMode"), None)
     re = next((e for e in events if e.get("event") == "reattached"), None)
     in_view = lambda e: e and all(abs(v) <= 1 for v in e["stageNdc"][:2]) and e["holderVisible"]
     result = {
-        "card_area_ratio": round(area, 3), "events": events, "shots": list(shots),
+        "base": base, "card_area_ratio": round(area, 3), "events": events, "shots": list(shots),
         "targetFound": bool(found), "found_ms": found and found["ms"],
         "floatMode": bool(floatm), "float_stage_in_view": bool(in_view(floatm)),
         "reattached": bool(re), "reattached_in_view": bool(in_view(re)),
         "exceptions": [json.dumps(e["params"].get("exceptionDetails", {}), ensure_ascii=False)[:300] for e in errs],
         "final_state": json.loads(state) if state else None,
     }
-    (OUT / "selftest_ar.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+    (OUT / (f"selftest_ar_{tag}.json" if tag else "selftest_ar.json")).write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps({k: v for k, v in result.items() if k != "events"}, ensure_ascii=False, indent=1))
     ok = result["targetFound"] and result["floatMode"] and result["float_stage_in_view"] and result["reattached"]
     return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    a = sys.argv[1:]
+    kw = {}
+    for flag in ("--base", "--tag"):
+        if flag in a:
+            i = a.index(flag)
+            kw[flag[2:]] = a[i + 1]
+            del a[i:i + 2]
+    sys.exit(main(**kw))
