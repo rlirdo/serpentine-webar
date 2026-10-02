@@ -82,8 +82,9 @@ class Chrome:
         finally:
             self.ws.settimeout(60)
 
-    def eval(self, expr, await_promise=True):
-        r = self.send("Runtime.evaluate", {"expression": expr, "awaitPromise": await_promise, "returnByValue": True})
+    def eval(self, expr, await_promise=True, user_gesture=False):
+        r = self.send("Runtime.evaluate", {"expression": expr, "awaitPromise": await_promise, "returnByValue": True,
+                                           "userGesture": user_gesture})
         if "exceptionDetails" in r:
             raise RuntimeError(json.dumps(r["exceptionDetails"], ensure_ascii=False)[:800])
         return r.get("result", {}).get("value")

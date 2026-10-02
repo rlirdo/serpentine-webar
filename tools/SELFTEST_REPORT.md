@@ -150,3 +150,77 @@ PYTHONUTF8=1 python tools/grep_check.py
 - exe 沒有數位簽章，首次執行會出現 SmartScreen 警告（使用說明已寫處理方式）。
 - 作答紀錄依瀏覽器 origin 分開存放。exe 優先使用 8731 埠，被占用時會改用其他埠，這時候就看不到先前的紀錄。
 - 線上版與 exe 都只在 headless Chrome 測試，仍未在實體手機上測試。
+
+---
+
+# 自我測試報告（2.0.0：語音導覽）
+
+- 測試日期：2026/10/02；環境同前（Windows 11、Python 3.13、Chrome headless=new＋SwiftShader；另以有頭 Chrome 做實際發聲測試）。
+- 新增 `js/speech.js`：只用瀏覽器內建 Web Speech API（`speechSynthesis`），不加音檔、不連外部服務、不加函式庫。hud.js 在 `say／next／choose／toast` 顯示文字時呼叫；game.js 另外提供測驗題目＋選項、答題詳解、行動承諾、各關完成（星數改唸成「得到 N 顆星」）、結果頁摘要的唸法。按鈕標籤、進度條、製作者字樣不唸。
+- 語音選擇：本機 zh-TW 語音優先 → 其他中文（排除 zh-HK／粵語）本機語音 → 雲端中文語音；`voiceschanged` 後重選。rate 國小 0.95、國中 1.05；依句號／驚嘆號／問號（過長再依逗號）切段。
+- 測試掛鉤：`window.__speech.log` 記錄每次 `speak()` 的原文、實際唸的來源、正規化結果；自動通關每一步以 CDP `userGesture:true` 觸發，讓真正的 `speechSynthesis.speak()` 路徑也被執行（測試時音量設 0，不出聲）。
+
+## 7. 語音正規化對照 — 通過（殘留 0）
+
+```
+PYTHONUTF8=1 python tools/speech_check.py
+```
+- 用 headless Chrome 直接載入 `js/speech.js` 與 `js/content.js`，以遊戲同一份 `normalizeForSpeech()` 正規化。
+- 範圍：A. content.js 全部字串 250 句（兩個年級版本、題庫、選項、詳解）；B. game.js／hud.js 交給語音的硬編字串 30 句；C. 自動通關實際記錄的 speak() 175 句。合計 455 句。
+- 殘留符號（上標／下標、≡、→、／、・、°、括號、★、表情符號、連續英文字母等）：**0**。對照表：`tools/speech_lines.txt`。
+- 例：Mg²⁺→鎂離子、Fe³⁺→鐵離子、≡Mg–OH／≡Si–OH→鎂氫氧基、矽氫氧基、蛇紋石 Mg₃Si₂O₅(OH)₄→蛇紋石、DSW→深層海水、FTIR→F T I R、50 °C→50 度、4–14 微米→4到14 微米、已補好 2 / 6→已補好2格，共6格、離心＋洗滌→離心加洗滌。
+
+## 8. 自動通關（含語音檢查）— 通過
+
+```
+PYTHONUTF8=1 python tools/autoplay_test.py all                     # 手機 390×844＋桌機 1280×720（國小版）
+PYTHONUTF8=1 python tools/autoplay_test.py landscape               # 加測：手機橫向 844×390（國中版）
+PYTHONUTF8=1 python tools/autoplay_test.py mobile --speech novoice --tag novoice    # 只有英文語音
+PYTHONUTF8=1 python tools/autoplay_test.py desktop --speech none --tag nospeech     # speechSynthesis 不存在
+```
+- 每個畫面以 `__ap.speechCheck()` 比對：畫面上的對話、題目、四個選項、詳解、結果頁恭喜與工作假設提醒、提示框文字，是否都出現在某一次 speak() 的原文中。
+
+| 情境 | 畫面 | 抵達結果頁 | console error | 外部請求 | speak() 次數 | 有文字的畫面 | 缺少語音的畫面 | 殘留符號 | 語音狀態 |
+|---|---|---|---|---|---|---|---|---|---|
+| 手機直向 390×844 | 81 | 是 | 0 | 0 | 99 | 81 | 0 | 0 | zh（Microsoft Hanhan, zh-TW） |
+| 桌機 1280×720 | 81 | 是 | 0 | 0 | 99 | 81 | 0 | 0 | zh（Hanhan） |
+| 手機橫向 844×390（國中版，rate 1.05） | 81 | 是 | 0 | 0 | 99 | 81 | 0 | 0 | zh（Hanhan） |
+| 沒有中文語音（getVoices 只回英文） | 81 | 是 | 0 | 0 | 99（未送出發聲） | 81 | 0 | 0 | none；右上顯示「此裝置沒有中文語音，請看文字」 |
+| speechSynthesis 不存在 | 81 | 是 | 0 | 0 | 99（只記錄） | 81 | 0 | 0 | unsupported；同上提示，無例外 |
+
+- speak() 組成（每輪相同）：對話 59、提示框 25、測驗／行動承諾題目＋選項 10、答題詳解 5。
+- 製作者字樣問題 0、出界／裁切 0（HUD 右上新增〔語音開／關〕後，關卡名稱膠囊在 390 px 寬仍不截斷）。請求共 19 筆（比 1.0 多 `js/speech.js` 一筆），全部是本機。
+- 註：橫向、沒有中文語音、speechSynthesis 不存在這三輪是在最後一次小修改（解鎖手勢改為 touchend／click／keydown、前 3 次手勢都補唸空白 utterance）之前跑的；手機、桌機、exe 三輪與有頭測試是最終版程式碼。
+
+## 9. 有頭 Chrome 實際發聲 — 通過（已選到 zh-TW 並進入 speaking）
+
+```
+PYTHONUTF8=1 python tools/speech_live_test.py
+```
+- 非 headless Chrome（看得到的視窗、喇叭會出聲）開 `play.html`，以 CDP `Input.dispatchMouseEvent` 送真的滑鼠點擊〔下一步〕，並包住 `speechSynthesis.speak` 記錄 utterance 事件。結果：`tools/out/speech_live.json`。
+- 裝置上的 zh-TW 語音：Microsoft Hanhan、Yating、Zhiwei（皆為本機語音）；遊戲選到 **Microsoft Hanhan（zh-TW，localService=true）**。
+- 第一次點擊前：`speechSynthesis.speaking=false`（瀏覽器規定要先有使用者手勢，開場第一句因此不發聲；記錄在已知限制）。
+- 之後 4 個畫面（開場 2–4 句、選年級）每次點擊後都觀察到 `speaking=true`，每個 utterance 都有 `start` 事件，voice＝Microsoft Hanhan (zh-TW)、rate 0.95；切到下一畫面時舊語音收到 `interrupted`（cancel 生效）。
+- 按〔語音關〕：0.3 秒後 `speaking=false`、`pending=false`，localStorage 存 "0"；再按〔語音開〕唸出「語音導覽已開啟」（start→end）。頁面例外 0。
+- 只能用程式確認瀏覽器回報的狀態與事件；實際喇叭聲音是否清楚，未經人耳在本次測試中確認。
+
+## 10. AR 假相機（重跑）— 通過
+- 本機：targetFound 3.7 s（與另一輪自動通關同時跑，較慢）、floatMode 在可視範圍、reattached，例外 0。截圖已看，右上〔語音開〕與懸浮模式提示不重疊。
+- exe：targetFound 1.8 s，floatMode、reattached 正常，例外 0。
+
+## 11. 全文檢索 — 通過
+- `tools/grep_check.py`：41 個文字檔，0 筆命中。
+
+## 12. exe 2.0（`墨玉晶格修復任務WebAR_v2.exe`）— 通過
+- 建置：`python -m PyInstaller --noconfirm --clean --distpath launcher/dist --workpath launcher/build launcher/build.spec`，產出 `SerpentineWebAR_v2.exe` 後改名。PyInstaller 6.22.3。
+- 版本 2.0.0；控制視窗標題「墨玉晶格修復任務 WebAR 2.0（語音版）　v2.0.0」；預設埠 **8732**（1.0 是 8731，兩版可同時開）；記錄檔 `%TEMP%\serpentine-webar-v2\`、自檢檔 `墨玉晶格修復任務WebAR_v2_selftest.log`（與 1.0 分開）。
+- 精簡環境 `--selftest`（另一資料夾、PATH 只有 System32;Windows、無 PYTHON* 變數）：exit 0，30 項 OK（29 個檔案含 `js/speech.js`＋根目錄）。`--version` exit 0。
+- 實際啟動 `--no-browser`：127.0.0.1:8732；headless 對 exe 網址自動通關（桌機 1280×720）81 畫面、抵達結果頁、console error 0、外部請求 0、缺少語音畫面 0、殘留 0。
+- 結束：對控制視窗送 WM_CLOSE → bootloader exit 0；tasklist 查無同名行程；8732 不再回應。launcher.log 40 筆 http 請求全部來自 127.0.0.1。
+
+## 已知限制（2.0.0）
+- 瀏覽器要求先有使用者手勢才能發聲：開場第一句（以及 AR 模式找到卡片後的第一句）在玩家第一次點擊前不會唸；點一下對話文字可以重唸。
+- 語音品質、斷句、多音字讀法取決於裝置內建語音；只在 Windows（Microsoft Hanhan）實測，iOS Safari、Android Chrome 尚未實機測試（包括解鎖手勢與 iPhone 靜音鍵行為）。
+- 只有雲端中文語音的瀏覽器（例如沒裝中文語音的 Windows 上的 Chrome「Google 國語（臺灣）」）會退而使用它，需要網路；離線時唸不出來，但不影響遊戲。
+- 3D 場景中的標籤文字（例如「≡Mg–OH」「廢液收集桶」）與按鈕標籤不唸；第 3、7 關的選項是按鈕，依規格不唸，只唸「選出 3 瓶正確的材料」「三選一」等提示。
+- 教師指引 docx／pdf 未改版（內容仍適用；語音說明寫在 README 與使用說明 v2）。

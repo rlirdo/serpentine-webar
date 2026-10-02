@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""墨玉晶格修復任務 WebAR — Windows 啟動器（PyInstaller onefile、無主控台視窗）。
+"""墨玉晶格修復任務 WebAR 2.0（語音版）— Windows 啟動器（PyInstaller onefile、無主控台視窗）。
+
+2.0.0：遊戲內文字以瀏覽器內建語音（Web Speech API）唸出。為了能和 1.0 版同時放在同一台電腦，
+       預設埠改為 8732（1.0 是 8731），記錄檔與自檢檔也改用 _v2 名稱。
 
 點兩下執行：
   1. 在 127.0.0.1 找可用的埠，啟動只供本機使用的 HTTP 伺服器（遊戲網頁完整打包在 exe 內，離線可用）。
@@ -8,9 +11,9 @@
 
 參數：
   --selftest    啟動伺服器 → 逐一請求主要檔案，檢查 200 與 MIME → 結束（exit code 0／1），
-                結果寫到 exe 同層的 墨玉晶格修復任務WebAR_selftest.log（不能寫就改寫 %TEMP%）。
+                結果寫到 exe 同層的 墨玉晶格修復任務WebAR_v2_selftest.log（不能寫就改寫 %TEMP%）。
   --no-browser  不自動開瀏覽器（仍顯示控制視窗）。
-  --port N      指定埠（預設優先用 8731，被占用就往後找）。
+  --port N      指定埠（預設優先用 8732，被占用就往後找）。
   --version     顯示版本後結束。
 
 手機不是連到這台電腦（區網 http 無法開相機），而是連 GitHub Pages 的 HTTPS 網址：
@@ -28,12 +31,14 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-APP_NAME = "墨玉晶格修復任務WebAR"
-VERSION = "1.0.0"
-BUILD_DATE = "2026/10/01"
+APP_NAME = "墨玉晶格修復任務WebAR_v2"
+VERSION = "2.0.0"
+BUILD_DATE = "2026/10/02"
+EDITION = "2.0（語音版）"
 ONLINE_URL = "https://rlirdo.github.io/serpentine-webar/"
 CREDIT = "NDHU自資系游豐兆製作"
-PREFERRED_PORT = 8731  # 固定優先埠：同一台電腦每次開啟網址相同，教師頁的本機作答紀錄（localStorage）才看得到
+PREFERRED_PORT = 8732  # 固定優先埠：同一台電腦每次開啟網址相同，教師頁的本機作答紀錄（localStorage）才看得到（1.0 版用 8731）
+TEMP_DIR_NAME = "serpentine-webar-v2"  # 執行紀錄與埠號檔（與 1.0 版分開）
 FROZEN = getattr(sys, "frozen", False)
 
 if FROZEN:
@@ -72,7 +77,7 @@ SELFTEST_FILES = [
     ("js/game.js", "text/javascript"), ("js/content.js", "text/javascript"), ("js/hud.js", "text/javascript"),
     ("js/ar-host.js", "text/javascript"), ("js/play-host.js", "text/javascript"), ("js/models.js", "text/javascript"),
     ("js/character.js", "text/javascript"), ("js/fx.js", "text/javascript"), ("js/audio.js", "text/javascript"),
-    ("js/layout.js", "text/javascript"), ("js/autoplay.js", "text/javascript"),
+    ("js/layout.js", "text/javascript"), ("js/autoplay.js", "text/javascript"), ("js/speech.js", "text/javascript"),
     ("vendor/three/three.module.js", "text/javascript"),
     ("vendor/mindar/mindar-image-three.prod.js", "text/javascript"),
     ("vendor/mindar/controller-mGt1s8dJ.js", "text/javascript"),
@@ -110,7 +115,7 @@ def writable_dir(preferred):
         probe.unlink()
         return preferred
     except OSError:
-        d = Path(tempfile.gettempdir()) / "serpentine-webar"
+        d = Path(tempfile.gettempdir()) / TEMP_DIR_NAME
         d.mkdir(parents=True, exist_ok=True)
         return d
 
@@ -243,7 +248,7 @@ def emit_text(text):
 
 def run_gui(preferred, open_browser):
     global LOG
-    log_dir = Path(tempfile.gettempdir()) / "serpentine-webar"
+    log_dir = Path(tempfile.gettempdir()) / TEMP_DIR_NAME
     LOG = Log(log_dir / "launcher.log")
     srv, port = start_server(preferred)
     url = f"http://127.0.0.1:{port}/launcher.html"
@@ -264,7 +269,7 @@ def run_gui(preferred, open_browser):
     from tkinter import font as tkfont
 
     root = tk.Tk()
-    root.title(f"墨玉晶格修復任務 WebAR　v{VERSION}")
+    root.title(f"墨玉晶格修復任務 WebAR {EDITION}　v{VERSION}")
     root.configure(bg="#0B1F3A")
     root.resizable(False, False)
     try:
@@ -294,7 +299,7 @@ def run_gui(preferred, open_browser):
 
     frame = tk.Frame(root, bg="#0B1F3A", padx=18, pady=14)
     frame.pack(fill="both", expand=True)
-    tk.Label(frame, text="墨玉晶格修復任務 WebAR", font=f_title, fg="#ffffff", bg="#0B1F3A").pack(anchor="w")
+    tk.Label(frame, text=f"墨玉晶格修復任務 WebAR {EDITION}", font=f_title, fg="#ffffff", bg="#0B1F3A").pack(anchor="w")
     tk.Label(frame, text="遊戲伺服器執行中（只供這台電腦使用，不需網路）", font=f_body,
              fg="#7ef0b4", bg="#0B1F3A").pack(anchor="w", pady=(4, 8))
     tk.Label(frame, text="目前網址：", font=f_body, fg="#cfe8df", bg="#0B1F3A").pack(anchor="w")
@@ -310,7 +315,7 @@ def run_gui(preferred, open_browser):
               activebackground="#e0b35a", relief="flat", padx=14, pady=6, cursor="hand2").pack(side="left")
     tk.Button(row, text="結束遊戲", font=f_btn, command=shutdown, bg="#2E7D5B", fg="#ffffff",
               activebackground="#2a9a6c", relief="flat", padx=14, pady=6, cursor="hand2").pack(side="left", padx=(10, 0))
-    tk.Label(frame, text="關閉這個視窗就會結束遊戲伺服器。", font=f_small, fg="#9fb3c8",
+    tk.Label(frame, text="遊戲對話會用語音唸出，可在遊戲右上角〔語音開／關〕切換。\n關閉這個視窗就會結束遊戲伺服器。", font=f_small, fg="#9fb3c8", justify="left",
              bg="#0B1F3A").pack(anchor="w", pady=(10, 0))
     tk.Label(frame, text=CREDIT, font=f_small, fg="#ffffff", bg="#06162b", padx=8, pady=3).pack(anchor="e", pady=(6, 0))
     root.protocol("WM_DELETE_WINDOW", shutdown)
@@ -329,7 +334,7 @@ def main(argv=None):
         i = argv.index("--port")
         preferred = int(argv[i + 1])
     if "--version" in argv:
-        emit_text(f"{APP_NAME} {VERSION}（{BUILD_DATE}）\n{ONLINE_URL}\n{CREDIT}")
+        emit_text(f"{APP_NAME} {VERSION} {EDITION}（{BUILD_DATE}）\n{ONLINE_URL}\n{CREDIT}")
         return 0
     if "--selftest" in argv:
         return run_selftest(preferred)

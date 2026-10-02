@@ -3,6 +3,7 @@
 // 遠紅外線只描述為「看不見的光／熱輻射」，不做任何身體方面的宣稱。
 
 export const CREDIT = "NDHU自資系游豐兆製作";
+export const VERSION = "2.0.0"; // 2.0.0：新增語音導覽（Web Speech API）
 export const TITLE = "墨玉晶格修復任務";
 export const STORE_KEY = "serpentineWebAR.records.v1";
 

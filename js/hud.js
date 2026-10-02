@@ -1,5 +1,7 @@
 // DOM 疊層：關卡進度條（8 格）、對話框、按鈕、星星、能量條、提示、全螢幕對話框、製作者字樣。
+// 2.0.0：對話、提示框的文字同時交給 speech.js 唸出（按鈕標籤、進度條、製作者字樣不唸）。
 import { CREDIT, LEVELS } from "./content.js";
+import { createSpeech } from "./speech.js";
 
 const h = (tag, cls, html) => {
   const e = document.createElement(tag);
@@ -8,7 +10,8 @@ const h = (tag, cls, html) => {
   return e;
 };
 
-export function createHud({ audio } = {}) {
+export function createHud({ audio, speech } = {}) {
+  speech = speech || createSpeech();
   if (!document.getElementById("credit")) {
     const c = h("div", null, CREDIT);
     c.id = "credit";
@@ -21,6 +24,8 @@ export function createHud({ audio } = {}) {
       <div class="lvl-chip">墨玉晶格修復任務</div>
       <div class="stars-total" title="星星">★ <span>0</span></div>
       <button class="icon-btn mute" aria-label="音效開關">🔊</button>
+      <button class="icon-btn voice" type="button" aria-label="語音開關" title="語音導覽：開／關">語音開</button>
+      <div class="voice-tip" role="status"></div>
       <div class="progress">${LEVELS.map((l, i) => `<div class="cell" title="${l.name}">${i + 1}</div>`).join("")}</div>
     </div>
     <div class="energy"><span>小晶能量</span><div class="bar"><i></i></div></div>
@@ -28,7 +33,7 @@ export function createHud({ audio } = {}) {
     <div class="toast"></div>
     <div class="panel hidden">
       <div class="speaker"><span class="ava"></span><span class="who">墨玉小晶</span></div>
-      <div class="say"></div>
+      <div class="say interactive" title="點一下可以再聽一次"></div>
       <div class="meter"><div class="lab"><span class="ml"></span><span class="mr"></span></div><div class="track"><i></i></div></div>
       <div class="btns"></div>
     </div>
@@ -36,7 +41,7 @@ export function createHud({ audio } = {}) {
   document.body.appendChild(root);
   const $ = (s) => root.querySelector(s);
   const el = {
-    chip: $(".lvl-chip"), stars: $(".stars-total span"), mute: $(".mute"), cells: [...root.querySelectorAll(".cell")],
+    chip: $(".lvl-chip"), stars: $(".stars-total span"), mute: $(".mute"), voice: $(".voice"), voiceTip: $(".voice-tip"), cells: [...root.querySelectorAll(".cell")],
     energy: $(".energy"), energyBar: $(".energy .bar i"), floatTip: $(".float-tip"), toast: $(".toast"),
     panel: $(".panel"), say: $(".say"), who: $(".who"), meter: $(".meter"), ml: $(".meter .ml"), mr: $(".meter .mr"),
     mbar: $(".meter .track i"), btns: $(".btns"), modalWrap: $(".modal-wrap"), modal: $(".modal"),
@@ -50,9 +55,34 @@ export function createHud({ audio } = {}) {
   el.mute.addEventListener("click", () => { if (audio) { audio.toggle(); syncMute(); } });
   syncMute();
 
+  // 語音開關（獨立於音效開關；狀態存 localStorage）
+  const syncVoice = () => {
+    const on = speech.enabled;
+    el.voice.textContent = on ? "語音開" : "語音關";
+    el.voice.setAttribute("aria-pressed", on ? "true" : "false");
+    el.voice.classList.toggle("off", !on);
+  };
+  el.voice.addEventListener("click", () => {
+    const on = speech.toggle();
+    syncVoice();
+    hud.toast(on ? "語音導覽已開啟" : "語音導覽已關閉", { speak: on });
+  });
+  syncVoice();
+  let tipTimer = 0;
+  speech.onNoVoice(() => {
+    el.voiceTip.textContent = "此裝置沒有中文語音，請看文字";
+    el.voiceTip.classList.add("show");
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => el.voiceTip.classList.remove("show"), 7000);
+  });
+  speech.checkUnsupported();
+  // 點對話文字＝再聽一次
+  let lastSay = { html: "", say: null };
+  el.say.addEventListener("click", () => { if (lastSay.html) speech.speak(lastSay.html, { html: true, say: lastSay.say, kind: "replay" }); });
+
   let toastTimer = 0;
   const hud = {
-    root, el, ap, setAP,
+    root, el, ap, setAP, speech,
     setTitle(text) { el.chip.textContent = text; },
     setProgress(current, doneCount) {
       el.cells.forEach((c, i) => {
@@ -65,8 +95,9 @@ export function createHud({ audio } = {}) {
       el.energy.classList.toggle("show", !!show);
       el.energyBar.style.width = Math.round(Math.max(0, Math.min(1, v)) * 100) + "%";
     },
-    toast(text, { ms = 2200, warn = false } = {}) {
+    toast(text, { ms = 2200, warn = false, speak = true } = {}) {
       el.toast.textContent = text;
+      if (speak) speech.speak(text, { mode: "queue", kind: "toast" });
       el.toast.classList.toggle("warn", warn);
       el.toast.classList.add("show");
       clearTimeout(toastTimer);
@@ -77,10 +108,13 @@ export function createHud({ audio } = {}) {
       el.floatTip.classList.toggle("show", !!show);
     },
     showPanel(show = true) { el.panel.classList.toggle("hidden", !show); },
-    say(html, { who = "墨玉小晶" } = {}) {
+    // speech：另外指定的唸法（例如把星星改唸成「得到三顆星」）；silent：不唸
+    say(html, { who = "墨玉小晶", speech: sayText = null, silent = false } = {}) {
       hud.showPanel(true);
       el.who.textContent = who;
       el.say.innerHTML = html;
+      lastSay = { html, say: sayText };
+      if (!silent) speech.speak(html, { html: true, say: sayText, kind: "say" });
       el.say.classList.remove("fadein");
       void el.say.offsetWidth;
       el.say.classList.add("fadein");
@@ -114,24 +148,26 @@ export function createHud({ audio } = {}) {
       });
     },
     // 顯示一句話＋一顆按鈕，按下後 resolve
-    next(html, { label = "下一步 ▶", cls = "", ap: apLabel = "next" } = {}) {
+    next(html, { label = "下一步 ▶", cls = "", ap: apLabel = "next", speech: sayText = null } = {}) {
       return new Promise((res) => {
-        hud.say(html);
+        hud.say(html, { speech: sayText });
         const [b] = hud.buttons([{ label, cls, onClick: () => res() }]);
         setAP(apLabel, () => b.click());
       });
     },
     // 對話框內的選項按鈕，resolve 為索引
-    choose(html, labels, { grid = false, ap: apLabel = "choose", apPick = 0, cls = "alt" } = {}) {
+    choose(html, labels, { grid = false, ap: apLabel = "choose", apPick = 0, cls = "alt", speech: sayText = null } = {}) {
       return new Promise((res) => {
-        hud.say(html);
+        hud.say(html, { speech: sayText });
         const bs = hud.buttons(labels.map((l, i) => ({ label: l, cls, onClick: () => res(i) })), { grid });
         setAP(apLabel, () => bs[typeof apPick === "function" ? apPick() : apPick].click());
       });
     },
     clearButtons() { el.btns.innerHTML = ""; },
-    modal(html) {
+    // speech：要唸的文字（題目＋選項等）；不給就不唸
+    modal(html, { speech: sayText = null } = {}) {
       el.modal.innerHTML = html;
+      if (sayText) speech.speak(sayText, { kind: "modal" });
       el.modalWrap.classList.add("show");
       el.modalWrap.scrollTop = 0;
       return el.modal;

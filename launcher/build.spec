@@ -2,7 +2,7 @@
 # PyInstaller 規格檔：onefile、無主控台視窗，遊戲網頁完整打包在 exe 內的 web/ 之下。
 # 用法（repo 根目錄）：
 #   python -m PyInstaller --noconfirm --clean --distpath launcher/dist --workpath launcher/build launcher/build.spec
-# 產出 launcher/dist/SerpentineWebAR.exe，再改名為「墨玉晶格修復任務WebAR.exe」（避免 PyInstaller 處理中文檔名）。
+# 產出 launcher/dist/SerpentineWebAR_v2.exe，再改名為「墨玉晶格修復任務WebAR_v2.exe」（避免 PyInstaller 處理中文檔名）。
 from pathlib import Path
 
 from PIL import Image
@@ -41,7 +41,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name="SerpentineWebAR",
+    name="SerpentineWebAR_v2",
     icon=str(ICO),
     console=False,
     debug=False,

@@ -17,6 +17,35 @@ export function installAutoplay(hud, game) {
       a();
       return true;
     },
+    // 語音檢查（2.0.0）：目前畫面上的對話／題目／詳解／提示框文字，是否都有對應的 speak() 呼叫
+    speechCheck() {
+      const sp = window.__speech;
+      const log = sp ? sp.log : [];
+      const key = (s) => String(s || "").replace(/[\s\p{P}\p{S}]/gu, "");
+      const vis = (el) => { if (!el) return false; const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden" && el.getClientRects().length > 0; };
+      const pieces = [];
+      const modalOn = document.querySelector("#hud .modal-wrap.show");
+      if (modalOn) {
+        const q = modalOn.querySelector(".q");
+        if (q) { const c = q.cloneNode(true); c.querySelectorAll(".facet-chip").forEach((x) => x.remove()); pieces.push({ kind: "question", text: c.textContent }); }
+        modalOn.querySelectorAll(".opt").forEach((o) => pieces.push({ kind: "option", text: o.textContent }));
+        const ex = modalOn.querySelector(".after .explain");
+        if (ex) pieces.push({ kind: "explain", text: ex.textContent });
+        const cert = modalOn.querySelector(".cert p");
+        if (cert) pieces.push({ kind: "result", text: cert.textContent });
+        const hon = modalOn.querySelector(":scope > .explain");
+        if (hon) pieces.push({ kind: "result-honesty", text: hon.textContent });
+      } else {
+        const panel = document.querySelector("#hud .panel");
+        const say = document.querySelector("#hud .say");
+        if (panel && !panel.classList.contains("hidden") && vis(say) && key(say.textContent)) pieces.push({ kind: "say", text: say.textContent });
+      }
+      const toast = document.querySelector("#hud .toast.show");
+      if (toast && key(toast.textContent)) pieces.push({ kind: "toast", text: toast.textContent });
+      const keys = log.map((e) => key(e.raw));
+      const missing = pieces.filter((p) => !keys.some((k) => k.includes(key(p.text))));
+      return { pieces: pieces.length, missing: missing.map((p) => ({ kind: p.kind, text: p.text.trim().slice(0, 40) })), logLen: log.length, state: sp ? sp.state() : null };
+    },
     // 版面檢查：製作者字樣存在、可見、在最上層；文字是否超出視窗或容器
     check() {
       const out = { credit: false, creditTop: false, overflow: [] };

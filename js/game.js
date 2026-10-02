@@ -139,6 +139,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     }
     const g = await hud.choose(GRADE_ASK, ["國小版（五、六年級）", "國中版"], { ap: "grade", apPick: host.apGrade === "junior" ? 1 : 0, cls: "gold" });
     S.grade = g === 1 ? "junior" : "elem";
+    if (hud.speech) hud.speech.setGrade(S.grade); // 語速：國小版 0.95、國中版 1.05
     hud.toast(`已選擇${GRADE_LABEL[S.grade]}`);
     xj.setFace("normal");
     await hud.next("出發前，先做 3 題小測驗，看看你現在知道多少。答錯沒關係！", { label: "開始前測 ▶", cls: "gold", ap: "pre-intro" });
@@ -153,7 +154,10 @@ export function createGame({ stage, camera, renderer, hud, host }) {
         <div class="kicker">${isPre ? "前測" : "後測"} ${i + 1} / ${n}${isPre ? "・答錯沒關係" : ""}</div>
         <div class="q">${q.q}<span class="facet-chip">${FACET_NAMES[q.facet]}</span></div>
         <div class="opts">${order.map((o, k) => `<button class="opt" data-o="${o}"><b>${"ABCD"[k]}</b>${q.options[o]}</button>`).join("")}</div>
-        <div class="after"></div>`);
+        <div class="after"></div>`, {
+        // 語音：題目＋四個選項（A、…；B、…）
+        speech: `${isPre ? "前測" : "後測"}第 ${i + 1} 題。${q.q}\n${order.map((o, k) => `${"ABCD"[k]}、${q.options[o]}`).join("；")}。`,
+      });
       const btns = [...m.querySelectorAll(".opt")];
       let done = false;
       btns.forEach((b) => b.addEventListener("click", () => {
@@ -174,6 +178,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
           const after = m.querySelector(".after");
           after.innerHTML = `<div class="explain">${correct ? "✔ 答對了！" : "✘ 再想想："}${q.explain}</div>
             <div class="row"><button class="btn gold nextq">${i + 1 < n ? "下一題 ▶" : "完成 ▶"}</button></div>`;
+          if (hud.speech) hud.speech.speak(`${correct ? "✔ 答對了！" : "✘ 再想想："}${q.explain}`, { kind: "explain" });
           const nb = after.querySelector(".nextq");
           nb.addEventListener("click", () => resolve());
           hud.setAP(`${kind}-q${i + 1}-explain`, () => nb.click());
@@ -222,7 +227,8 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     burst(xjStagePos(), "#ffd76a", 30, { speed: 0.6 });
     for (let k = 0; k < stars; k++) setTimeout(() => audio.star(k), 200 + k * 180);
     await hud.next(`<b>第 ${i + 1} 關完成！</b>${starsHtml(stars)}<span class="sub">${T(L.learn)}</span><span class="tip">🌱 環境小語：${L.tip}</span>`,
-      { label: i < 7 ? "下一關 ▶" : "前往後測 ▶", cls: "gold", ap: `L${i + 1}-done` });
+      { label: i < 7 ? "下一關 ▶" : "前往後測 ▶", cls: "gold", ap: `L${i + 1}-done`,
+        speech: `第 ${i + 1} 關完成！得到 ${stars} 顆星。\n${T(L.learn)}\n環境小語：${L.tip}` });
   }
 
   // ---------- 第 1 關：切割／顎碎／粉碎 ----------
@@ -1063,7 +1069,8 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     hud.showPanel(false);
     return new Promise((resolve) => {
       const m = hud.modal(`<div class="kicker">行動承諾</div><div class="q">${ENDING.commitAsk}</div>
-        <div class="opts">${ENDING.commits.map((c, i) => `<button class="opt" data-i="${i}"><b>${i + 1}</b>${c}</button>`).join("")}</div>`);
+        <div class="opts">${ENDING.commits.map((c, i) => `<button class="opt" data-i="${i}"><b>${i + 1}</b>${c}</button>`).join("")}</div>`,
+      { speech: `${ENDING.commitAsk}\n${ENDING.commits.map((c, i) => `${i + 1}、${c}`).join("；")}。` });
       const bs = [...m.querySelectorAll(".opt")];
       bs.forEach((b) => b.addEventListener("click", () => {
         S.commit = ENDING.commits[Number(b.dataset.i)];
@@ -1141,7 +1148,10 @@ export function createGame({ stage, camera, renderer, hud, host }) {
       <div class="cmp">${FACETS.map((f) => `<span>${FACET_NAMES[f]}</span>${bar(R.facets[f], 100, { 知識: "#1c7293", 態度: "#2e7d5b", 行動: "#c99a3e", 探究: "#ef6c3c" }[f])}<b>${R.facets[f]}%</b>`).join("")}</div>
       <div class="explain">${ENDING.honesty}</div>
       <p class="small">可以截圖保存證書。成績只存在這台裝置，不會上傳。</p>
-      <div class="row"><button class="btn alt again">再玩一次</button><a class="btn gold" href="teacher.html">給老師看</a></div>`);
+      <div class="row"><button class="btn alt again">再玩一次</button><a class="btn gold" href="teacher.html">給老師看</a></div>`, {
+      // 語音：結果頁摘要（星數與一句恭喜）＋工作假設提醒
+      speech: `恭喜你完成墨玉晶格修復任務的八個實驗步驟！\n你一共得到 ${R.stars} 顆星，滿分是 24 顆。\n前測答對 ${R.preScore} 題，後測同樣的 3 題答對 ${R.postSame} 題。\n${ENDING.honesty}`,
+    });
     m.querySelector(".again").addEventListener("click", () => location.reload());
     hud.setAP("result", null);
   }

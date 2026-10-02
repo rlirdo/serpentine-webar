@@ -35,13 +35,21 @@ button { font-family: inherit; }
 .lvl-chip {
   font-weight: 700; font-size: 16px; background: rgba(6, 90, 130, .9); padding: 6px 12px;
   border-radius: 999px; border: 1px solid rgba(255, 255, 255, .25); white-space: nowrap;
-  max-width: calc(100% - 150px); overflow: hidden; text-overflow: ellipsis;
+  max-width: calc(100% - 196px); overflow: hidden; text-overflow: ellipsis;
 }
 .stars-total { margin-left: auto; font-weight: 700; color: #ffd76a; font-size: 17px; white-space: nowrap; }
 .icon-btn {
   min-width: 44px; min-height: 44px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .3);
   background: rgba(11, 31, 58, .75); color: #fff; font-size: 16px; cursor: pointer;
 }
+.icon-btn.voice { padding: 0 7px; font-weight: 700; white-space: nowrap; border-color: rgba(126, 240, 180, .7); color: #c8ffe2; }
+.icon-btn.voice.off { border-color: rgba(255, 255, 255, .3); color: rgba(255, 255, 255, .7); }
+.voice-tip {
+  position: absolute; right: 8px; top: calc(100% - 4px); display: none; max-width: min(80vw, 320px);
+  background: rgba(255, 241, 230, .97); color: #9a3412; font-size: 16px; font-weight: 700;
+  padding: 6px 10px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); z-index: 3;
+}
+.voice-tip.show { display: block; }
 .progress { display: flex; gap: 4px; width: 100%; order: 5; }
 .progress .cell {
   flex: 1; height: 24px; border-radius: 6px; background: rgba(255, 255, 255, .16);
@@ -83,7 +91,7 @@ button { font-family: inherit; }
 .panel.hidden { opacity: 0; visibility: hidden; transform: translateY(20px); pointer-events: none !important; }
 .speaker { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--moss); font-weight: 700; margin-bottom: 4px; }
 .speaker .ava { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #7ef0b4, #1f7a4d 70%); border: 2px solid #c8ffe2; }
-.say { font-size: 18px; line-height: 1.55; min-height: 1.6em; }
+.say { font-size: 18px; line-height: 1.55; min-height: 1.6em; cursor: pointer; }
 .say .sub { display: block; font-size: 16px; color: #cfe8df; margin-top: 4px; }
 .say .tip { display: block; margin-top: 6px; font-size: 16px; color: #ffe2a8; }
 .say .honest { display: block; margin-top: 6px; font-size: 16px; color: #ffd0bd; border-left: 3px solid var(--fir); padding-left: 8px; }
