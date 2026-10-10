@@ -124,3 +124,7 @@
 遊戲中「深層海水的 Mg²⁺ 補進蛇紋石晶格、讓遠紅外線（看不見的光／熱輻射）變強」，是研究團隊的工作假設，尚待 FTIR、XRD、XPS 與放射率量測驗證。第 8 關的光譜是簡化示意圖。
 
 NDHU自資系游豐兆製作
+
+## 授權
+
+本專案原始碼以 MIT License 釋出（見 repo 根目錄 `LICENSE`）；第三方函式庫（three.js、MindAR、es-module-shims）依各自授權，見 `vendor/README.md`。遊戲中的圖像為作者自製。
