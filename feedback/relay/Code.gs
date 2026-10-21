@@ -6,7 +6,10 @@
  *
  * 指令碼屬性（專案設定 → 指令碼屬性）：
  *   GITHUB_TOKEN  必填。fine-grained token，只授權 serpentine-webar、Contents: Read and write。
- *   SHEET_ID      選填。Google 試算表 ID；空白則不寫試算表。
+ *   SHEET_ID      要收 email 就必須設定。私人 Google 試算表 ID；空白則不寫試算表，email 直接丟棄。
+ *
+ * ★ 隱私：寫入 GitHub（公開 repo）的 JSON 一律 contact=""（保留 contact_ok）；
+ *   email 只寫入 SHEET_ID 指定的私人試算表。SHEET_ID 未設時 email 丟棄，回應 contact_saved:false。
  *
  * ★ token 只放在指令碼屬性，絕不寫在本檔、網頁或 repo 裡。
  */
@@ -48,8 +51,10 @@ function doPost(e) {
     var token = PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
     if (!token) return json_({ ok: false, error: '中繼尚未設定 GITHUB_TOKEN' });
 
+    var email = rec.contact;   // 只留在記憶體，供私人試算表使用
     var ordered = {};
     FIELDS.forEach(function (k) { ordered[k] = rec[k]; });
+    ordered.contact = '';      // 公開 repo 絕不寫入 email
     var body = JSON.stringify(ordered, null, 2) + '\n';
 
     var url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME +
@@ -74,8 +79,13 @@ function doPost(e) {
       return json_({ ok: false, error: 'GitHub 寫入失敗（' + code + '）' });
     }
 
-    appendSheet_(ordered);
-    return json_({ ok: true, name: name });
+    var sheetRow = {};
+    FIELDS.forEach(function (k) { sheetRow[k] = ordered[k]; });
+    sheetRow.contact = email;
+    var saved = appendSheet_(sheetRow, name);
+    var out = { ok: true, name: name };
+    if (email) out.contact_saved = saved;   // 有填 email 才回報是否已存入私人試算表
+    return json_(out);
   } catch (err) {
     console.error(err);
     return json_({ ok: false, error: '伺服器錯誤：' + (err && err.message ? err.message : err) });
@@ -113,15 +123,18 @@ function clean_(d) {
   return r;
 }
 
-function appendSheet_(rec) {
+/** 寫入私人試算表（含 email）；成功回 true。SHEET_ID 未設或失敗回 false。 */
+function appendSheet_(rec, name) {
   var id = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
-  if (!id) return;
+  if (!id) return false;
   try {
     var sh = SpreadsheetApp.openById(id).getSheets()[0];
-    if (sh.getLastRow() === 0) sh.appendRow(FIELDS);
-    sh.appendRow(FIELDS.map(function (k) { return rec[k]; }));
+    if (sh.getLastRow() === 0) sh.appendRow(['file'].concat(FIELDS));
+    sh.appendRow([name].concat(FIELDS.map(function (k) { return rec[k]; })));
+    return true;
   } catch (err) {
     console.error('Sheet 寫入失敗：' + err);  // 試算表失敗不影響 GitHub 已寫入的結果
+    return false;
   }
 }
 

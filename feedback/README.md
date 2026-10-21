@@ -17,9 +17,11 @@
 
 ```
 問卷網頁 ──POST text/plain JSON──▶ Apps Script（doPost）──PUT Contents API──▶ feedback/responses/*.json
-                                       └─（選用）append 一列到 Google Sheet
+                                       └─（設定 SHEET_ID 時）append 一列到主持人私人 Google Sheet（含 email）
 ```
 
+- **email 不寫進公開 repo**：`responses/*.json` 的 `contact` 一律為空字串（保留 `contact_ok`）；email 只寫入 `SHEET_ID` 指定的私人試算表。
+  未設定 `SHEET_ID` 時 email 直接丟棄，中繼回應 `contact_saved:false`，網頁感謝畫面提示「目前未啟用 email 收集」。
 - GitHub token 只存在 Apps Script 的「指令碼屬性」`GITHUB_TOKEN`，**不在網頁、不在 repo**。
 - 網頁用 `Content-Type: text/plain` 送出，避免 CORS preflight。
 - 防灌水：隱藏 honeypot 欄位、所有題目必填檢查、送出鍵 5 秒內只接受一次；中繼端再做白名單欄位與選項檢查、字串截斷。
@@ -42,7 +44,7 @@
   "suggest": "字串",
   "fit_level": "國小高年級|國中|高中|皆可|皆不適合",
   "contact_ok": "願意|不願意",
-  "contact": "選填 email（願意時才有）",
+  "contact": "",
   "ua": "瀏覽器 UA 截短 120 字"
 }
 ```
@@ -58,9 +60,9 @@
 | q5_feedback_useful | 前後測與即時回饋對教學有幫助 |
 | q6_use_in_class | 我願意在自己的課堂試用 |
 
-`submitted_at` 以 Apps Script 伺服器時間（Asia/Taipei）覆寫。
+`submitted_at` 以 Apps Script 伺服器時間（Asia/Taipei）覆寫。`contact` 在 repo 內永遠是空字串；email 請到私人試算表查（第一欄 `file` 為對應的 JSON 檔名）。
 
 ## 隱私
 
-不蒐集姓名、學號、學校名稱。Email 為選填，只在填答者選「願意」時記錄，用途僅限後續教學包試用邀請。
-注意：本 repo 為公開 repo，`responses/` 內容任何人都看得到；若在意 Email 公開，可在活動後將含 Email 的回覆移出 repo。
+不蒐集姓名、學號、學校名稱。Email 為選填，只在填答者選「願意」時記錄，**只存於主持人之私人 Google 試算表**，不會出現在本公開 repo，用途僅限後續教學包試用邀請。
+本 repo 為公開 repo，`responses/` 內容（不含 email）任何人都看得到。

@@ -120,7 +120,7 @@
       <legend><span class="num">14.</span>是否願意收到「教學包試用邀請」？<span class="req">必填</span></legend>
       <div class="opts" id="opt-contact_ok"></div>
       <div class="contact-box" id="contactBox">
-        <label class="hint" for="contact">Email（選填；<b style="color:#ffd76a">僅用於後續教學包試用邀請</b>，不作其他用途）</label>
+        <label class="hint" for="contact">Email（選填）：<b style="color:#ffd76a">您的 email 不會公開於網路，只存於主持人之私人試算表，僅用於教學包試用邀請。</b></label>
         <input type="email" id="contact" maxlength="120" placeholder="name@example.com" autocomplete="email" style="margin-top:6px">
       </div>
     </fieldset>
@@ -128,13 +128,14 @@
     <div id="formMsg" class="msg bad" role="alert"></div>
 
     <div class="submit-wrap"><button type="submit" id="submitBtn" class="btn gold">送出回饋</button></div>
-    <p class="privacy">隱私說明：不蒐集姓名、學號與學校名稱；只記錄上述作答、送出時間與瀏覽器版本（截短）。Email 僅在您勾選「願意」並自行填寫時才會記錄，且只用於教學包試用邀請。</p>
+    <p class="privacy">隱私說明：不蒐集姓名、學號與學校名稱；只記錄上述作答、送出時間與瀏覽器版本（截短）。Email 僅在您選「願意」並自行填寫時才會記錄，不會公開於網路，只存於主持人之私人試算表，且只用於教學包試用邀請。</p>
   </form>
 
   <div id="doneBox" class="done" role="status">
     <div style="font-size:46px">💚</div>
     <div class="big">感謝您的回饋！</div>
     <p class="notice">您的意見會幫助我們把墨玉晶格修復任務做得更好。</p>
+    <p class="notice" id="noEmailNote" style="display:none;color:#ffe7b0">提醒：目前未啟用 email 收集，您留下的 email 未被保存；您的問卷回覆已成功送出。</p>
     <div class="stack">
       <a class="btn gold" href="../">🎮 再玩一次</a>
       <button type="button" class="btn ghost" id="againBtn">✏️ 再填一份</button>
@@ -277,7 +278,8 @@
       '&body=' + encodeURIComponent(lines.join('\n'));
   }
 
-  function markDone() {
+  function markDone(res) {
+    $('noEmailNote').style.display = (res && res.contact_saved === false) ? 'block' : 'none';
     try { localStorage.setItem(DONE_KEY, new Date().toISOString()); } catch (e) { /* 忽略 */ }
     form.style.display = 'none';
     $('setupNote').classList.remove('show');
@@ -325,7 +327,7 @@
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (res) {
         if (!res || !res.ok) throw new Error((res && res.error) || '伺服器未回應成功');
-        markDone();
+        markDone(res);
       })
       .catch(function (err) {
         showMsg('送出失敗（' + esc(err.message || err) + '）。請稍後再按一次「送出回饋」，或<a id="mailFallback" href="' +

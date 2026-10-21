@@ -32,6 +32,20 @@
 8. 畫面出現一串 `github_pat_` 開頭的文字 → 按旁邊的複製圖示。
    **這串只會顯示這一次**。先不要關分頁，直接進行步驟 2，把它貼到 Apps Script。
 
+## 步驟 1.5　建立私人 Google 試算表並取得 ID（要收 email 就必須做）
+
+> 為了隱私，填答者留下的 email **不會**寫進公開的 GitHub repo，只會寫進這份私人試算表。
+> 沒有設定 `SHEET_ID` 的話，email 會被直接丟棄（問卷其他內容照常存到 GitHub），填答者會看到「目前未啟用 email 收集」。
+
+1. 開新分頁到 <https://sheets.google.com/> → 左上 **空白試算表**（＋）。
+2. 左上「未命名的試算表」改名為 `WebAR回饋問卷_私人_含email`。
+3. 看瀏覽器網址列，形如 `https://docs.google.com/spreadsheets/d/1AbC…xyz/edit#gid=0`，
+   `/d/` 和 `/edit` 中間那一長串（例：`1AbC…xyz`）就是 **試算表 ID** → 選取並複製，步驟 2 會用到。
+4. 右上 **共用** → 確認「一般存取權」是 **限制**（只有你自己能開）→ 不要加任何人 → 完成。
+   **不要**改成「知道連結的任何人」。
+5. 試算表內容不用動；第一筆回覆進來時程式會自動寫標題列（第一欄 `file` 是對應的 GitHub JSON 檔名）。
+   之後請用**同一個 Google 帳號**做步驟 2、3，Apps Script 才有權限寫這份試算表。
+
 ## 步驟 2　建立 Apps Script 專案並放入 token
 
 1. 開新分頁到 <https://script.google.com/> → 左上 **新專案**。
@@ -43,7 +57,7 @@
    | 屬性 | 值 |
    |---|---|
    | `GITHUB_TOKEN` | 貼上步驟 1 複製的 `github_pat_…` |
-   | `SHEET_ID`（選填） | 若要同步一份 Google 試算表：新建試算表，網址 `https://docs.google.com/spreadsheets/d/<這一段>/edit` 中間那段就是 ID；不需要就不要加這一列 |
+   | `SHEET_ID`（要收 email 就必須設定） | 貼上步驟 1.5 複製的試算表 ID。不設定＝email 一律丟棄 |
 6. 按 **儲存指令碼屬性**。
 7. 回到 GitHub 那個顯示 token 的分頁 → 可以關掉了。之後不需要再看到這串 token。
 
@@ -93,8 +107,11 @@ window.FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycb…/exec";
 1. 手機或電腦打開 <https://rlirdo.github.io/serpentine-webar/feedback/>（若還看到「回饋系統設定中」黃框，按重新整理或等 1–2 分鐘）。
 2. 填一份測試問卷（建議「建議」欄寫「測試」）→ **送出回饋** → 應看到「感謝您的回饋！」。
 3. 到 GitHub repo → `feedback/responses/` → 應該多一個 `YYYYMMDD-HHMMSS_xxxxxx.json`，
-   commit 訊息為 `feedback: YYYYMMDD-HHMMSS_xxxxxx`。
-4. 測試檔可以在 GitHub 網頁上刪掉（點檔案 → 右上 `…` → **Delete file**），或保留並在分析時排除。
+   commit 訊息為 `feedback: YYYYMMDD-HHMMSS_xxxxxx`。打開它確認 `"contact": ""`（email 不會出現在 repo）。
+4. 再測一份「願意」並填自己的 email：
+   - 有設 `SHEET_ID`：私人試算表多一列，`contact` 欄有 email；感謝畫面**沒有**黃色提醒。
+   - 沒設 `SHEET_ID`：感謝畫面出現「目前未啟用 email 收集」，email 沒被保存。
+5. 測試檔可以在 GitHub 網頁上刪掉（點檔案 → 右上 `…` → **Delete file**），或保留並在分析時排除。
 
 送出失敗時看哪裡：Apps Script 編輯器左側 **執行作業**（列表圖示）→ 點最近一筆 `doPost` 看錯誤訊息。
 常見原因：
@@ -103,6 +120,7 @@ window.FEEDBACK_ENDPOINT = "https://script.google.com/macros/s/AKfycb…/exec";
 | `GitHub 寫入失敗（401）` | token 貼錯或過期 → 重做步驟 1、2 |
 | `GitHub 寫入失敗（403）` 或 `（404）` | token 沒勾 serpentine-webar，或 Contents 不是 Read and write |
 | `中繼尚未設定 GITHUB_TOKEN` | 屬性名稱拼錯 |
+| 有填 email 卻出現「目前未啟用 email 收集」 | `SHEET_ID` 沒設、ID 貼錯，或試算表不是用部署 Apps Script 的同一個帳號建立 |
 | 網頁顯示「送出失敗（Failed to fetch）」 | 步驟 3 存取權不是「所有人」，或 config.js 網址貼錯（要以 `/exec` 結尾） |
 
 ## 步驟 6　到期前更換 token（每 90 天）
