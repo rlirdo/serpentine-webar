@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WebAR 遊戲回饋問卷</title>
+<meta name="description" content="墨玉晶格修復任務 WebAR 遊戲回饋問卷（約 2 分鐘，不記名）。">
+<link rel="icon" href="../assets/icon.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { background: radial-gradient(130% 90% at 50% 0%, #14507a 0%, #0b2a47 50%, #071629 100%);
+         -webkit-user-select: text; user-select: text; }
+  input, textarea, select { -webkit-user-select: text; user-select: text; font-family: inherit; }
+  .kicker { color: #7ef0b4; font-weight: 700; letter-spacing: 2px; font-size: 15px; }
+  h1.hero-title { font-size: 25px; line-height: 1.35; margin: 8px 0 6px; }
+  .sub { color: #a7e3cf; font-size: 15px; line-height: 1.55; margin: 0 0 6px; }
+  .notice { font-size: 15px; line-height: 1.6; color: #cfe8df; }
+  .notice b { color: #ffd76a; }
+  .setup { display: none; margin: 10px 0; padding: 10px 12px; border-radius: 12px;
+           background: rgba(201, 154, 62, .18); border: 1px solid rgba(224, 179, 90, .6); color: #ffe7b0; font-size: 15px; line-height: 1.55; }
+  .setup.show { display: block; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .q { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 16px;
+       padding: 12px 14px 14px; margin: 12px 0; }
+  .q.err { border-color: #ff8a7a; box-shadow: 0 0 0 2px rgba(224, 87, 75, .45); }
+  .q legend, .q .lab { display: block; font-weight: 700; font-size: 17px; line-height: 1.5; margin-bottom: 8px; padding: 0; }
+  .q .num { color: #ffd76a; margin-right: 4px; }
+  .q .req { color: #ff9d8f; font-size: 14px; margin-left: 4px; font-weight: 400; }
+  .q .hint { font-size: 14px; color: #a9c4d6; font-weight: 400; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt { position: relative; }
+  .opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .opt span { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 14px;
+              border-radius: 12px; border: 1px solid rgba(255, 255, 255, .3); background: rgba(11, 31, 58, .55);
+              font-size: 16px; cursor: pointer; line-height: 1.3; }
+  .opt input:checked + span { background: linear-gradient(180deg, #e0b35a, var(--gold)); color: var(--navy);
+                              border-color: #f3d48f; font-weight: 700; }
+  .opt input:focus-visible + span { outline: 3px solid #7ef0b4; outline-offset: 2px; }
+  .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .likert .opt span { width: 100%; padding: 8px 0; font-size: 18px; font-weight: 700; }
+  .scale-lab { display: flex; justify-content: space-between; font-size: 13px; color: #a9c4d6; margin-top: 5px; }
+  input[type=text], input[type=email], textarea {
+    width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .35);
+    background: rgba(255, 255, 255, .95); color: var(--ink); }
+  textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+  .other-box, .contact-box { margin-top: 10px; display: none; }
+  .other-box.show, .contact-box.show { display: block; }
+  .hp { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .msg { display: none; margin: 12px 0; padding: 12px 14px; border-radius: 14px; font-size: 16px; line-height: 1.6; }
+  .msg.show { display: block; }
+  .msg.bad { background: rgba(224, 87, 75, .2); border: 1px solid #ff8a7a; color: #ffe1dc; }
+  .msg.info { background: rgba(28, 114, 147, .3); border: 1px solid #5fb6d6; color: #dff4ff; }
+  .msg a { color: #ffd76a; font-weight: 700; }
+  .submit-wrap { margin: 18px 0 8px; }
+  .submit-wrap .btn { width: 100%; min-height: 58px; font-size: 19px; }
+  .done { display: none; text-align: center; padding: 26px 16px; }
+  .done.show { display: block; }
+  .done .big { font-size: 26px; font-weight: 800; color: #ffd76a; margin: 8px 0 10px; }
+  .done .stack { max-width: 420px; margin: 18px auto; }
+  .privacy { font-size: 14px; color: #a9c4d6; line-height: 1.6; margin-top: 14px; }
+  #credit { position: static; display: inline-block; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="page"><div class="page-inner">
+  <div class="kicker">FEEDBACK · 墨玉晶格修復任務</div>
+  <h1 class="hero-title">WebAR 遊戲回饋問卷（約 2 分鐘，不記名）</h1>
+  <p class="sub">第 36 屆環境教育學術暨實務交流國際研討會　壁報 A155-07</p>
+  <p class="notice">謝謝您試玩！本問卷<b>不蒐集姓名與學校名稱</b>，回覆只用於改進遊戲與教學設計。標示「必填」的題目請都作答。</p>
+
+  <div id="setupNote" class="setup">回饋系統設定中：目前送出時會改用 Email（開啟您的郵件 App）寄出填答內容，造成不便敬請見諒。</div>
+  <div id="againNote" class="msg info">這台裝置之前已經填過一次問卷，謝謝您！如果想補充意見，仍可以再填一次。</div>
+
+  <form id="fbForm" novalidate>
+    <div class="hp" aria-hidden="true"><label>網站（請留空）<input type="text" name="website" id="website" tabindex="-1" autocomplete="off"></label></div>
+
+    <fieldset class="q" data-name="role">
+      <legend><span class="num">1.</span>您的身分<span class="req">必填</span></legend>
+      <div class="opts" id="opt-role"></div>
+      <div class="other-box" id="roleOtherBox">
+        <input type="text" id="role_other" maxlength="40" placeholder="請簡述您的身分（例如：科教館人員）">
+      </div>
+    </fieldset>
+
+    <fieldset class="q" data-name="teach_level">
+      <legend><span class="num">2.</span>任教階段<span class="req">必填</span> <span class="hint">（非教師請選「不適用」）</span></legend>
+      <div class="opts" id="opt-teach_level"></div>
+    </fieldset>
+
+    <fieldset class="q" data-name="played">
+      <legend><span class="num">3.</span>遊玩程度<span class="req">必填</span></legend>
+      <div class="opts" id="opt-played"></div>
+    </fieldset>
+
+    <fieldset class="q" data-name="device">
+      <legend><span class="num">4.</span>使用的裝置<span class="req">必填</span></legend>
+      <div class="opts" id="opt-device"></div>
+    </fieldset>
+
+    <div id="likertArea"></div>
+
+    <div class="q" data-name="best_part">
+      <label class="lab" for="best_part"><span class="num">11.</span>這個遊戲您最喜歡的部分<span class="req">必填</span></label>
+      <textarea id="best_part" maxlength="500" placeholder="例如：把 Mg²⁺ 補進晶格的關卡、語音導覽……"></textarea>
+    </div>
+
+    <div class="q" data-name="suggest">
+      <label class="lab" for="suggest"><span class="num">12.</span>給我們的建議<span class="req">必填</span> <span class="hint">（沒有可填「無」）</span></label>
+      <textarea id="suggest" maxlength="500" placeholder="哪裡看不懂、卡關，或希望增加什麼？"></textarea>
+    </div>
+
+    <fieldset class="q" data-name="fit_level">
+      <legend><span class="num">13.</span>您認為最適合的年段<span class="req">必填</span></legend>
+      <div class="opts" id="opt-fit_level"></div>
+    </fieldset>
+
+    <fieldset class="q" data-name="contact_ok">
+      <legend><span class="num">14.</span>是否願意收到「教學包試用邀請」？<span class="req">必填</span></legend>
+      <div class="opts" id="opt-contact_ok"></div>
+      <div class="contact-box" id="contactBox">
+        <label class="hint" for="contact">Email（選填；<b style="color:#ffd76a">僅用於後續教學包試用邀請</b>，不作其他用途）</label>
+        <input type="email" id="contact" maxlength="120" placeholder="name@example.com" autocomplete="email" style="margin-top:6px">
+      </div>
+    </fieldset>
+
+    <div id="formMsg" class="msg bad" role="alert"></div>
+
+    <div class="submit-wrap"><button type="submit" id="submitBtn" class="btn gold">送出回饋</button></div>
+    <p class="privacy">隱私說明：不蒐集姓名、學號與學校名稱；只記錄上述作答、送出時間與瀏覽器版本（截短）。Email 僅在您勾選「願意」並自行填寫時才會記錄，且只用於教學包試用邀請。</p>
+  </form>
+
+  <div id="doneBox" class="done" role="status">
+    <div style="font-size:46px">💚</div>
+    <div class="big">感謝您的回饋！</div>
+    <p class="notice">您的意見會幫助我們把墨玉晶格修復任務做得更好。</p>
+    <div class="stack">
+      <a class="btn gold" href="../">🎮 再玩一次</a>
+      <button type="button" class="btn ghost" id="againBtn">✏️ 再填一份</button>
+    </div>
+  </div>
+
+  <div id="credit">NDHU自資系游豐兆製作</div>
+</div></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var ENDPOINT = (window.FEEDBACK_ENDPOINT || '').trim();
+  var MAILTO = '811554006@gms.ndhu.edu.tw';
+  var EVENT = 'SEET2026-A155-07';
+  var DONE_KEY = 'webar-feedback-done';
+
+  var CHOICES = {
+    role: ['國小教師', '國中教師', '高中教師', '大專教師', '研究生', '大學生', '其他'],
+    teach_level: ['國小', '國中', '高中', '大專', '不適用'],
+    played: ['完整玩完', '玩了一部分', '只看示範'],
+    device: ['iPhone', 'Android', '平板', '電腦', '其他'],
+    fit_level: ['國小高年級', '國中', '高中', '皆可', '皆不適合'],
+    contact_ok: ['願意', '不願意']
+  };
+  var LIKERT = [
+    ['q1_clear', '遊戲說明清楚易懂'],
+    ['q2_fun', '遊戲有趣'],
+    ['q3_easy', 'AR 操作容易'],
+    ['q4_mechanism', '透過「把 Mg²⁺ 補進晶格」，我更理解離子交換機制'],
+    ['q5_feedback_useful', '前後測與即時回饋對教學有幫助'],
+    ['q6_use_in_class', '我願意在自己的課堂試用']
+  ];
+  var LABELS = {
+    role: '身分', role_other: '身分（其他）', teach_level: '任教階段', played: '遊玩程度', device: '裝置',
+    best_part: '最喜歡的部分', suggest: '建議', fit_level: '適合年段', contact_ok: '願意收到試用邀請', contact: 'Email'
+  };
+  LIKERT.forEach(function (l) { LABELS[l[0]] = l[1] + '（1–5）'; });
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // 建立單選選項
+  Object.keys(CHOICES).forEach(function (name) {
+    var box = $('opt-' + name);
+    box.innerHTML = CHOICES[name].map(function (v) {
+      return '<label class="opt"><input type="radio" name="' + name + '" value="' + esc(v) + '"><span>' + esc(v) + '</span></label>';
+    }).join('');
+  });
+  // 建立 1–5 分題
+  $('likertArea').innerHTML = LIKERT.map(function (l, i) {
+    var opts = '';
+    for (var s = 1; s <= 5; s++) {
+      opts += '<label class="opt"><input type="radio" name="' + l[0] + '" value="' + s + '" aria-label="' + s + ' 分"><span>' + s + '</span></label>';
+    }
+    return '<fieldset class="q" data-name="' + l[0] + '"><legend><span class="num">' + (i + 5) + '.</span>' + esc(l[1]) +
+      '<span class="req">必填</span></legend><div class="likert">' + opts +
+      '</div><div class="scale-lab"><span>1 非常不同意</span><span>5 非常同意</span></div></fieldset>';
+  }).join('');
+
+  function val(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+
+  var form = $('fbForm');
+  form.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.name === 'role') $('roleOtherBox').classList.toggle('show', t.value === '其他');
+    if (t.name === 'contact_ok') $('contactBox').classList.toggle('show', t.value === '願意');
+    var q = t.closest && t.closest('.q');
+    if (q) q.classList.remove('err');
+  });
+  form.addEventListener('input', function (e) {
+    var q = e.target.closest && e.target.closest('.q');
+    if (q) q.classList.remove('err');
+  });
+
+  if (!ENDPOINT) $('setupNote').classList.add('show');
+  try { if (localStorage.getItem(DONE_KEY)) $('againNote').classList.add('show'); } catch (e) { /* 無痕模式等 */ }
+
+  function collect() {
+    var d = {
+      schema: 'webar-feedback-v1',
+      submitted_at: taipeiISO(new Date()),
+      event: EVENT,
+      role: val('role'),
+      role_other: '',
+      teach_level: val('teach_level'),
+      played: val('played'),
+      device: val('device')
+    };
+    if (d.role === '其他') d.role_other = $('role_other').value.trim().slice(0, 40);
+    LIKERT.forEach(function (l) { var v = val(l[0]); d[l[0]] = v ? parseInt(v, 10) : null; });
+    d.best_part = $('best_part').value.trim().slice(0, 500);
+    d.suggest = $('suggest').value.trim().slice(0, 500);
+    d.fit_level = val('fit_level');
+    d.contact_ok = val('contact_ok');
+    d.contact = d.contact_ok === '願意' ? $('contact').value.trim().slice(0, 120) : '';
+    d.ua = (navigator.userAgent || '').slice(0, 120);
+    return d;
+  }
+
+  function taipeiISO(dt) {
+    var t = new Date(dt.getTime() + 8 * 3600 * 1000);
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return t.getUTCFullYear() + '-' + p(t.getUTCMonth() + 1) + '-' + p(t.getUTCDate()) + 'T' +
+      p(t.getUTCHours()) + ':' + p(t.getUTCMinutes()) + ':' + p(t.getUTCSeconds()) + '+08:00';
+  }
+
+  function validate(d) {
+    var missing = [];
+    ['role', 'teach_level', 'played', 'device'].forEach(function (k) { if (!d[k]) missing.push(k); });
+    if (d.role === '其他' && !d.role_other) missing.push('role');
+    LIKERT.forEach(function (l) { if (!d[l[0]]) missing.push(l[0]); });
+    if (!d.best_part) missing.push('best_part');
+    if (!d.suggest) missing.push('suggest');
+    if (!d.fit_level) missing.push('fit_level');
+    if (!d.contact_ok) missing.push('contact_ok');
+    var badEmail = d.contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.contact);
+    document.querySelectorAll('.q').forEach(function (q) {
+      q.classList.toggle('err', missing.indexOf(q.dataset.name) >= 0 || (badEmail && q.dataset.name === 'contact_ok'));
+    });
+    return { missing: missing, badEmail: badEmail };
+  }
+
+  function showMsg(html) { var m = $('formMsg'); m.innerHTML = html; m.className = 'msg bad show'; m.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  function hideMsg() { $('formMsg').classList.remove('show'); }
+
+  function mailtoHref(d) {
+    var lines = ['WebAR 遊戲回饋問卷（' + EVENT + '）', '送出時間：' + d.submitted_at, ''];
+    Object.keys(LABELS).forEach(function (k) {
+      if (k === 'role_other' && !d.role_other) return;
+      if (k === 'contact' && !d.contact) return;
+      lines.push(LABELS[k] + '：' + (d[k] === null ? '' : d[k]));
+    });
+    lines.push('', '（以下為程式用資料，請勿修改）', JSON.stringify(d));
+    return 'mailto:' + MAILTO + '?subject=' + encodeURIComponent('WebAR 回饋問卷 ' + EVENT) +
+      '&body=' + encodeURIComponent(lines.join('\n'));
+  }
+
+  function markDone() {
+    try { localStorage.setItem(DONE_KEY, new Date().toISOString()); } catch (e) { /* 忽略 */ }
+    form.style.display = 'none';
+    $('setupNote').classList.remove('show');
+    $('againNote').classList.remove('show');
+    $('doneBox').classList.add('show');
+    window.scrollTo(0, 0);
+    var pg = document.querySelector('.page'); if (pg) pg.scrollTop = 0;
+  }
+
+  var lastSubmit = 0;
+  var sending = false;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var now = Date.now();
+    if (sending || now - lastSubmit < 5000) return;   // 5 秒內只接受一次
+    lastSubmit = now;
+    hideMsg();
+
+    var d = collect();
+    var chk = validate(d);
+    if (chk.missing.length || chk.badEmail) {
+      lastSubmit = 0;  // 驗證失敗不佔用 5 秒冷卻
+      showMsg(chk.missing.length ? '還有 ' + chk.missing.length + ' 題尚未完成，已用紅框標示，請補填後再送出。' : 'Email 格式看起來不正確，請檢查（或改選「不願意」）。');
+      var first = document.querySelector('.q.err'); if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if ($('website').value) { markDone(); return; }   // honeypot：機器人填了隱藏欄位，假裝成功
+
+    if (!ENDPOINT) {
+      var href = mailtoHref(d);
+      var m = $('formMsg');
+      m.className = 'msg info show';
+      m.innerHTML = '已為您開啟郵件 App，請在郵件中按「傳送」才算完成。若郵件 App 沒有出現，請<a href="' + href +
+        '">點這裡再開一次</a>，或把內容寄到 ' + MAILTO + '。';
+      try { localStorage.setItem(DONE_KEY, new Date().toISOString()); } catch (e2) { /* 忽略 */ }
+      window.location.href = href;
+      return;
+    }
+
+    sending = true;
+    var btn = $('submitBtn');
+    btn.disabled = true; btn.textContent = '送出中…';
+    fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(d), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok) throw new Error((res && res.error) || '伺服器未回應成功');
+        markDone();
+      })
+      .catch(function (err) {
+        showMsg('送出失敗（' + esc(err.message || err) + '）。請稍後再按一次「送出回饋」，或<a id="mailFallback" href="' +
+          mailtoHref(d) + '">改用 Email 寄出填答內容</a>。');
+      })
+      .then(function () { sending = false; btn.disabled = false; btn.textContent = '送出回饋'; });
+  });
+
+  $('againBtn').addEventListener('click', function () {
+    form.reset();
+    $('roleOtherBox').classList.remove('show');
+    $('contactBox').classList.remove('show');
+    document.querySelectorAll('.q.err').forEach(function (q) { q.classList.remove('err'); });
+    $('doneBox').classList.remove('show');
+    form.style.display = '';
+    if (!ENDPOINT) $('setupNote').classList.add('show');
+    lastSubmit = 0;
+    window.scrollTo(0, 0);
+    var pg = document.querySelector('.page'); if (pg) pg.scrollTop = 0;
+  });
+})();
+</script>
+</body>
+</html>
