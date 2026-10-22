@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v1",
+  "submitted_at": "2026-10-22T10:05:44+08:00",
+  "event": "SEET2026-A155-07",
+  "role": "研究生",
+  "role_other": "",
+  "teach_level": "不適用",
+  "played": "完整玩完",
+  "device": "電腦",
+  "q1_clear": 5,
+  "q2_fun": 4,
+  "q3_easy": 4,
+  "q4_mechanism": 5,
+  "q5_feedback_useful": 4,
+  "q6_use_in_class": 4,
+  "best_part": "【測試回覆】核心關補鎂離子",
+  "suggest": "【測試回覆】系統測試用，可刪除",
+  "fit_level": "皆可",
+  "contact_ok": "不願意",
+  "contact": "",
+  "ua": "test-client/requests"
+}
