@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v1",
+  "submitted_at": "2026-10-27T19:10:57+08:00",
+  "event": "SEET2026-A155-07",
+  "role": "研究生",
+  "role_other": "",
+  "teach_level": "不適用",
+  "played": "完整玩完",
+  "device": "Android",
+  "q1_clear": 5,
+  "q2_fun": 5,
+  "q3_easy": 5,
+  "q4_mechanism": 5,
+  "q5_feedback_useful": 5,
+  "q6_use_in_class": 3,
+  "best_part": "將鎂離子補進晶格的環節",
+  "suggest": "無",
+  "fit_level": "國中",
+  "contact_ok": "不願意",
+  "contact": "",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Sa"
+}
