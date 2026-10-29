@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>WebAR 遊戲回饋問卷</title>
-<meta name="description" content="墨玉晶格修復任務 WebAR 遊戲回饋問卷（約 2 分鐘，不記名）。">
+<meta name="description" content="墨玉晶格修復任務 WebAR 遊戲回饋問卷：環境知識、環境態度、行動意向、科學探究四面向（約 3 分鐘，不記名）。">
 <link rel="icon" href="../assets/icon.png">
 <link rel="stylesheet" href="../css/style.css">
 <style>
@@ -19,6 +19,11 @@
   .setup { display: none; margin: 10px 0; padding: 10px 12px; border-radius: 12px;
            background: rgba(201, 154, 62, .18); border: 1px solid rgba(224, 179, 90, .6); color: #ffe7b0; font-size: 15px; line-height: 1.55; }
   .setup.show { display: block; }
+  .sec { margin: 26px 0 4px; padding: 10px 14px; border-radius: 14px; border-left: 6px solid #7ef0b4;
+         background: rgba(126, 240, 180, .10); }
+  .sec .en { display: block; color: #7ef0b4; font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+  .sec h2 { margin: 2px 0 2px; font-size: 21px; line-height: 1.35; color: #fff; }
+  .sec p { margin: 0; font-size: 14px; color: #a9c4d6; line-height: 1.5; }
   fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
   .q { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 16px;
        padding: 12px 14px 14px; margin: 12px 0; }
@@ -28,25 +33,26 @@
   .q legend + * { clear: both; }
   .q .num { color: #ffd76a; margin-right: 4px; }
   .q .req { color: #ff9d8f; font-size: 14px; margin-left: 4px; font-weight: 400; }
-  .q .hint { font-size: 14px; color: #a9c4d6; font-weight: 400; }
-  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
-  .opt { position: relative; }
+  .q .opt-tag { color: #a9c4d6; font-size: 14px; margin-left: 4px; font-weight: 400; }
+  .opt { position: relative; display: block; }
   .opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-  .opt span { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 14px;
+  .opt span { display: flex; align-items: center; min-height: 44px; padding: 8px 14px;
               border-radius: 12px; border: 1px solid rgba(255, 255, 255, .3); background: rgba(11, 31, 58, .55);
-              font-size: 16px; cursor: pointer; line-height: 1.3; }
+              font-size: 16px; cursor: pointer; line-height: 1.4; }
   .opt input:checked + span { background: linear-gradient(180deg, #e0b35a, var(--gold)); color: var(--navy);
                               border-color: #f3d48f; font-weight: 700; }
   .opt input:focus-visible + span { outline: 3px solid #7ef0b4; outline-offset: 2px; }
+  .mc { display: flex; flex-direction: column; gap: 8px; }
+  .mc .opt span b { flex: 0 0 auto; margin-right: 10px; color: #ffd76a; }
+  .mc .opt input:checked + span b { color: var(--navy); }
   .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .likert .opt span { width: 100%; padding: 8px 0; font-size: 18px; font-weight: 700; }
-  .scale-lab { display: flex; justify-content: space-between; font-size: 13px; color: #a9c4d6; margin-top: 5px; }
-  input[type=text], input[type=email], textarea {
-    width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .35);
-    background: rgba(255, 255, 255, .95); color: var(--ink); }
-  textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
-  .other-box, .contact-box { margin-top: 10px; display: none; }
-  .other-box.show, .contact-box.show { display: block; }
+  .likert .opt span { flex-direction: column; justify-content: center; text-align: center; width: 100%;
+                      min-height: 62px; padding: 6px 2px; }
+  .likert .opt span b { font-size: 19px; line-height: 1.1; }
+  .likert .opt span small { font-size: 12px; line-height: 1.2; margin-top: 3px; word-break: break-all; }
+  textarea { box-sizing: border-box; display: block; width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .35);
+             background: rgba(255, 255, 255, .95); color: var(--ink); min-height: 84px; resize: vertical; line-height: 1.5; }
+  .count { text-align: right; font-size: 13px; color: #a9c4d6; margin-top: 4px; }
   .hp { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .msg { display: none; margin: 12px 0; padding: 12px 14px; border-radius: 14px; font-size: 16px; line-height: 1.6; }
   .msg.show { display: block; }
@@ -66,76 +72,27 @@
 <body>
 <div class="page"><div class="page-inner">
   <div class="kicker">FEEDBACK · 墨玉晶格修復任務</div>
-  <h1 class="hero-title">WebAR 遊戲回饋問卷（約 2 分鐘，不記名）</h1>
+  <h1 class="hero-title">WebAR 遊戲回饋問卷（約 3 分鐘，不記名）</h1>
   <p class="sub">第 36 屆環境教育學術暨實務交流國際研討會　壁報 A155-07</p>
-  <p class="notice">謝謝您試玩！本問卷<b>不蒐集姓名與學校名稱</b>，回覆只用於改進遊戲與教學設計。標示「必填」的題目請都作答。</p>
+  <p class="notice">謝謝您試玩！問卷分<b>環境知識、環境態度、行動意向、科學探究</b>四部分，每部分 3 題選擇題（必填）＋1 題簡答（選填）。本問卷<b>不蒐集姓名、學校、email 等個人資料</b>，回覆只用於改進遊戲與教學設計。</p>
 
   <div id="setupNote" class="setup">回饋系統設定中：目前送出時會改用 Email（開啟您的郵件 App）寄出填答內容，造成不便敬請見諒。</div>
   <div id="againNote" class="msg info">這台裝置之前已經填過一次問卷，謝謝您！如果想補充意見，仍可以再填一次。</div>
 
   <form id="fbForm" novalidate>
     <div class="hp" aria-hidden="true"><label>網站（請留空）<input type="text" name="website" id="website" tabindex="-1" autocomplete="off"></label></div>
-
-    <fieldset class="q" data-name="role">
-      <legend><span class="num">1.</span>您的身分<span class="req">必填</span></legend>
-      <div class="opts" id="opt-role"></div>
-      <div class="other-box" id="roleOtherBox">
-        <input type="text" id="role_other" maxlength="40" placeholder="請簡述您的身分（例如：科教館人員）">
-      </div>
-    </fieldset>
-
-    <fieldset class="q" data-name="teach_level">
-      <legend><span class="num">2.</span>任教階段<span class="req">必填</span> <span class="hint">（非教師請選「不適用」）</span></legend>
-      <div class="opts" id="opt-teach_level"></div>
-    </fieldset>
-
-    <fieldset class="q" data-name="played">
-      <legend><span class="num">3.</span>遊玩程度<span class="req">必填</span></legend>
-      <div class="opts" id="opt-played"></div>
-    </fieldset>
-
-    <fieldset class="q" data-name="device">
-      <legend><span class="num">4.</span>使用的裝置<span class="req">必填</span></legend>
-      <div class="opts" id="opt-device"></div>
-    </fieldset>
-
-    <div id="likertArea"></div>
-
-    <div class="q" data-name="best_part">
-      <label class="lab" for="best_part"><span class="num">11.</span>這個遊戲您最喜歡的部分<span class="req">必填</span></label>
-      <textarea id="best_part" maxlength="500" placeholder="例如：把 Mg²⁺ 補進晶格的關卡、語音導覽……"></textarea>
-    </div>
-
-    <div class="q" data-name="suggest">
-      <label class="lab" for="suggest"><span class="num">12.</span>給我們的建議<span class="req">必填</span> <span class="hint">（沒有可填「無」）</span></label>
-      <textarea id="suggest" maxlength="500" placeholder="哪裡看不懂、卡關，或希望增加什麼？"></textarea>
-    </div>
-
-    <fieldset class="q" data-name="fit_level">
-      <legend><span class="num">13.</span>您認為最適合的年段<span class="req">必填</span></legend>
-      <div class="opts" id="opt-fit_level"></div>
-    </fieldset>
-
-    <fieldset class="q" data-name="contact_ok">
-      <legend><span class="num">14.</span>是否願意收到「教學包試用邀請」？<span class="req">必填</span></legend>
-      <div class="opts" id="opt-contact_ok"></div>
-      <div class="contact-box" id="contactBox">
-        <label class="hint" for="contact">Email（選填）：<b style="color:#ffd76a">您的 email 不會公開於網路，只存於主持人之私人試算表，僅用於教學包試用邀請。</b></label>
-        <input type="email" id="contact" maxlength="120" placeholder="name@example.com" autocomplete="email" style="margin-top:6px">
-      </div>
-    </fieldset>
+    <div id="qArea"></div>
 
     <div id="formMsg" class="msg bad" role="alert"></div>
 
     <div class="submit-wrap"><button type="submit" id="submitBtn" class="btn gold">送出回饋</button></div>
-    <p class="privacy">隱私說明：不蒐集姓名、學號與學校名稱；只記錄上述作答、送出時間與瀏覽器版本（截短）。Email 僅在您選「願意」並自行填寫時才會記錄，不會公開於網路，只存於主持人之私人試算表，且只用於教學包試用邀請。</p>
+    <p class="privacy">隱私說明：不蒐集姓名、學號、學校、email、身分與裝置資訊；只記錄上述作答、送出時間與瀏覽器版本（截短）。回覆以不記名 JSON 存於公開 GitHub repo，只用於改進遊戲與教學研究。</p>
   </form>
 
   <div id="doneBox" class="done" role="status">
     <div style="font-size:46px">💚</div>
     <div class="big">感謝您的回饋！</div>
     <p class="notice">您的意見會幫助我們把墨玉晶格修復任務做得更好。</p>
-    <p class="notice" id="noEmailNote" style="display:none;color:#ffe7b0">提醒：目前未啟用 email 收集，您留下的 email 未被保存；您的問卷回覆已成功送出。</p>
     <div class="stack">
       <a class="btn gold" href="../">🎮 再玩一次</a>
       <button type="button" class="btn ghost" id="againBtn">✏️ 再填一份</button>
@@ -152,50 +109,71 @@
   var ENDPOINT = (window.FEEDBACK_ENDPOINT || '').trim();
   var MAILTO = '811554006@gms.ndhu.edu.tw';
   var EVENT = 'SEET2026-A155-07';
+  var SCHEMA = 'webar-feedback-v2';
   var DONE_KEY = 'webar-feedback-done';
+  var OPEN_MAX = 300;
+  var LETTERS = ['A', 'B', 'C', 'D'];
+  var SCALE = ['非常不同意', '不同意', '普通', '同意', '非常同意'];
 
-  var CHOICES = {
-    role: ['國小教師', '國中教師', '高中教師', '大專教師', '研究生', '大學生', '其他'],
-    teach_level: ['國小', '國中', '高中', '大專', '不適用'],
-    played: ['完整玩完', '玩了一部分', '只看示範'],
-    device: ['iPhone', 'Android', '平板', '電腦', '其他'],
-    fit_level: ['國小高年級', '國中', '高中', '皆可', '皆不適合'],
-    contact_ok: ['願意', '不願意']
-  };
-  var LIKERT = [
-    ['q1_clear', '遊戲說明清楚易懂'],
-    ['q2_fun', '遊戲有趣'],
-    ['q3_easy', 'AR 操作容易'],
-    ['q4_mechanism', '透過「把 Mg²⁺ 補進晶格」，我更理解離子交換機制'],
-    ['q5_feedback_useful', '前後測與即時回饋對教學有幫助'],
-    ['q6_use_in_class', '我願意在自己的課堂試用']
+  // 四面向 × 3 題選擇（必填）＋ 1 題簡答（選填）。知識題選項以 A–D 送出；正解只在撈取工具內，不放在本頁。
+  var SECTIONS = [
+    { en: 'PART 1 · KNOWLEDGE', title: '一、環境知識', desc: '四選一，請憑玩過遊戲的印象作答。', type: 'mc', items: [
+      ['k1', '遊戲中把墨玉（蛇紋石）磨成約 2–4 微米的微米粉，最主要的好處是什麼？',
+        ['讓粉末溶解成透明的液體', '總表面積大幅增加，能和溶液接觸反應的位置變多', '讓石頭的質量變輕到幾乎為零', '讓蛇紋石直接變成碳酸鈣']],
+      ['k2', '第五關滴入花蓮外海深層海水（DSW）後，哪一種離子被設定為最適合補進蛇紋石晶格空位？',
+        ['Ca²⁺（鈣離子）', 'Na⁺（鈉離子）', 'Mg²⁺（鎂離子）', 'Cl⁻（氯離子）']],
+      ['k3', '第三關配製反應液時，下列哪一個做法最符合「綠色化學」原則？',
+        ['以水為溶劑，避免有毒溶劑與強酸', '改用容易揮發的有機溶劑溶解粉末', '加入強酸讓反應更快', '加熱到 200 °C 快速反應']]
+    ], open: ['k_open', '這個遊戲讓您學到的一個新知識是什麼？', '例如：粒徑越小表面積越大、Mg²⁺ 可以補進晶格空位……'] },
+    { en: 'PART 2 · ATTITUDE', title: '二、環境態度', desc: '玩過這個 WebAR 遊戲之後，請選出最符合您想法的程度。', type: 'likert', items: [
+      ['a1', '玩過這個遊戲後，我認為沒人要的閒置石材（如墨玉）也可能是值得再利用的資源。'],
+      ['a2', '玩過這個遊戲後，我認同做實驗時應優先用水、避免有毒溶劑與強酸的綠色化學做法。'],
+      ['a3', '玩過這個遊戲後，我覺得花蓮在地資源（如蛇紋石、深層海水）值得珍惜與善加利用。']
+    ], open: ['a_open', '玩完之後，您對「閒置石材」或「花蓮在地資源」的看法有什麼改變？', '例如：原來沒人要的石頭也能變成材料……'] },
+    { en: 'PART 3 · ACTION', title: '三、行動意向', desc: '玩過這個 WebAR 遊戲之後，請選出最符合您想法的程度。', type: 'likert', items: [
+      ['i1', '玩過這個遊戲後，我願意在生活中做好垃圾分類與資源回收，減少浪費。'],
+      ['i2', '玩過這個遊戲後，我願意把廢液、廢棄物分類收集並妥善處理，不隨意倒進水槽或水溝。'],
+      ['i3', '玩過這個遊戲後，我願意和家人、朋友或學生分享在地資源再利用與綠色化學的觀念。']
+    ], open: ['i_open', '玩完之後，您會想採取什麼環境行動？（越具體越好）', '例如：回家把廢油、廢電池分類回收……'] },
+    { en: 'PART 4 · INQUIRY', title: '四、科學探究', desc: '玩過這個 WebAR 遊戲之後，請選出最符合您想法的程度。', type: 'likert', items: [
+      ['s1', '玩過這個遊戲後，我更理解「工作假設」要靠實驗與儀器量測的證據來驗證，不能直接當成結論。'],
+      ['s2', '玩過這個遊戲後，我對用儀器（如 FTIR 光譜）找證據的科學探究方式更感興趣。'],
+      ['s3', '玩過這個遊戲後，我會想進一步了解或動手探究「Mg²⁺ 補進晶格」這類材料科學問題。']
+    ], open: ['s_open', '玩完之後，您最想用實驗弄清楚的一個問題是什麼？', '例如：補好晶格後，遠紅外線真的會變強嗎？'] }
   ];
-  var LABELS = {
-    role: '身分', role_other: '身分（其他）', teach_level: '任教階段', played: '遊玩程度', device: '裝置',
-    best_part: '最喜歡的部分', suggest: '建議', fit_level: '適合年段', contact_ok: '願意收到試用邀請', contact: 'Email'
-  };
-  LIKERT.forEach(function (l) { LABELS[l[0]] = l[1] + '（1–5）'; });
+  var REQUIRED = [], OPENS = [], LABELS = {}, NUMS = {};
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  // 建立單選選項
-  Object.keys(CHOICES).forEach(function (name) {
-    var box = $('opt-' + name);
-    box.innerHTML = CHOICES[name].map(function (v) {
-      return '<label class="opt"><input type="radio" name="' + name + '" value="' + esc(v) + '"><span>' + esc(v) + '</span></label>';
-    }).join('');
+  // 建立題目（編號 1–16）
+  var n = 0, html = '';
+  SECTIONS.forEach(function (sec) {
+    html += '<div class="sec"><span class="en">' + esc(sec.en) + '</span><h2>' + esc(sec.title) + '</h2><p>' + esc(sec.desc) + '</p></div>';
+    sec.items.forEach(function (it) {
+      n++; NUMS[it[0]] = n; REQUIRED.push(it[0]); LABELS[it[0]] = n + '. ' + it[1];
+      var opts = '';
+      if (sec.type === 'mc') {
+        opts = '<div class="mc">' + it[2].map(function (t, j) {
+          return '<label class="opt"><input type="radio" name="' + it[0] + '" value="' + LETTERS[j] + '"><span><b>' +
+            LETTERS[j] + '.</b>' + esc(t) + '</span></label>';
+        }).join('') + '</div>';
+      } else {
+        opts = '<div class="likert">' + SCALE.map(function (t, j) {
+          return '<label class="opt"><input type="radio" name="' + it[0] + '" value="' + (j + 1) + '" aria-label="' + t +
+            '"><span><b>' + (j + 1) + '</b><small>' + t + '</small></span></label>';
+        }).join('') + '</div>';
+      }
+      html += '<fieldset class="q" data-name="' + it[0] + '"><legend><span class="num">' + n + '.</span>' + esc(it[1]) +
+        '<span class="req">必填</span></legend>' + opts + '</fieldset>';
+    });
+    var o = sec.open;
+    n++; NUMS[o[0]] = n; OPENS.push(o[0]); LABELS[o[0]] = n + '. ' + o[1];
+    html += '<div class="q" data-name="' + o[0] + '"><label class="lab" for="' + o[0] + '"><span class="num">' + n + '.</span>' +
+      esc(o[1]) + '<span class="opt-tag">選填</span></label><textarea id="' + o[0] + '" maxlength="' + OPEN_MAX +
+      '" placeholder="' + esc(o[2]) + '"></textarea><div class="count"><span id="' + o[0] + '_n">0</span> / ' + OPEN_MAX + ' 字</div></div>';
   });
-  // 建立 1–5 分題
-  $('likertArea').innerHTML = LIKERT.map(function (l, i) {
-    var opts = '';
-    for (var s = 1; s <= 5; s++) {
-      opts += '<label class="opt"><input type="radio" name="' + l[0] + '" value="' + s + '" aria-label="' + s + ' 分"><span>' + s + '</span></label>';
-    }
-    return '<fieldset class="q" data-name="' + l[0] + '"><legend><span class="num">' + (i + 5) + '.</span>' + esc(l[1]) +
-      '<span class="req">必填</span></legend><div class="likert">' + opts +
-      '</div><div class="scale-lab"><span>1 非常不同意</span><span>5 非常同意</span></div></fieldset>';
-  }).join('');
+  $('qArea').innerHTML = html;
 
   function val(name) {
     var el = document.querySelector('input[name="' + name + '"]:checked');
@@ -204,14 +182,13 @@
 
   var form = $('fbForm');
   form.addEventListener('change', function (e) {
-    var t = e.target;
-    if (t.name === 'role') $('roleOtherBox').classList.toggle('show', t.value === '其他');
-    if (t.name === 'contact_ok') $('contactBox').classList.toggle('show', t.value === '願意');
-    var q = t.closest && t.closest('.q');
+    var q = e.target.closest && e.target.closest('.q');
     if (q) q.classList.remove('err');
   });
   form.addEventListener('input', function (e) {
-    var q = e.target.closest && e.target.closest('.q');
+    var t = e.target;
+    if (t.tagName === 'TEXTAREA' && $(t.id + '_n')) $(t.id + '_n').textContent = t.value.length;
+    var q = t.closest && t.closest('.q');
     if (q) q.classList.remove('err');
   });
 
@@ -219,58 +196,39 @@
   try { if (localStorage.getItem(DONE_KEY)) $('againNote').classList.add('show'); } catch (e) { /* 無痕模式等 */ }
 
   function collect() {
-    var d = {
-      schema: 'webar-feedback-v1',
-      submitted_at: taipeiISO(new Date()),
-      event: EVENT,
-      role: val('role'),
-      role_other: '',
-      teach_level: val('teach_level'),
-      played: val('played'),
-      device: val('device')
-    };
-    if (d.role === '其他') d.role_other = $('role_other').value.trim().slice(0, 40);
-    LIKERT.forEach(function (l) { var v = val(l[0]); d[l[0]] = v ? parseInt(v, 10) : null; });
-    d.best_part = $('best_part').value.trim().slice(0, 500);
-    d.suggest = $('suggest').value.trim().slice(0, 500);
-    d.fit_level = val('fit_level');
-    d.contact_ok = val('contact_ok');
-    d.contact = d.contact_ok === '願意' ? $('contact').value.trim().slice(0, 120) : '';
+    var d = { schema: SCHEMA, submitted_at: taipeiISO(new Date()), event: EVENT };
+    SECTIONS.forEach(function (sec) {
+      sec.items.forEach(function (it) {
+        var v = val(it[0]);
+        d[it[0]] = sec.type === 'mc' ? v : (v ? parseInt(v, 10) : null);
+      });
+      d[sec.open[0]] = $(sec.open[0]).value.trim().slice(0, OPEN_MAX);
+    });
     d.ua = (navigator.userAgent || '').slice(0, 120);
     return d;
   }
 
   function taipeiISO(dt) {
     var t = new Date(dt.getTime() + 8 * 3600 * 1000);
-    function p(n) { return (n < 10 ? '0' : '') + n; }
+    function p(x) { return (x < 10 ? '0' : '') + x; }
     return t.getUTCFullYear() + '-' + p(t.getUTCMonth() + 1) + '-' + p(t.getUTCDate()) + 'T' +
       p(t.getUTCHours()) + ':' + p(t.getUTCMinutes()) + ':' + p(t.getUTCSeconds()) + '+08:00';
   }
 
   function validate(d) {
-    var missing = [];
-    ['role', 'teach_level', 'played', 'device'].forEach(function (k) { if (!d[k]) missing.push(k); });
-    if (d.role === '其他' && !d.role_other) missing.push('role');
-    LIKERT.forEach(function (l) { if (!d[l[0]]) missing.push(l[0]); });
-    if (!d.best_part) missing.push('best_part');
-    if (!d.suggest) missing.push('suggest');
-    if (!d.fit_level) missing.push('fit_level');
-    if (!d.contact_ok) missing.push('contact_ok');
-    var badEmail = d.contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.contact);
+    var missing = REQUIRED.filter(function (k) { return !d[k]; });
     document.querySelectorAll('.q').forEach(function (q) {
-      q.classList.toggle('err', missing.indexOf(q.dataset.name) >= 0 || (badEmail && q.dataset.name === 'contact_ok'));
+      q.classList.toggle('err', missing.indexOf(q.dataset.name) >= 0);
     });
-    return { missing: missing, badEmail: badEmail };
+    return missing;
   }
 
-  function showMsg(html) { var m = $('formMsg'); m.innerHTML = html; m.className = 'msg bad show'; m.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  function showMsg(h) { var m = $('formMsg'); m.innerHTML = h; m.className = 'msg bad show'; }
   function hideMsg() { $('formMsg').classList.remove('show'); }
 
   function mailtoHref(d) {
     var lines = ['WebAR 遊戲回饋問卷（' + EVENT + '）', '送出時間：' + d.submitted_at, ''];
-    Object.keys(LABELS).forEach(function (k) {
-      if (k === 'role_other' && !d.role_other) return;
-      if (k === 'contact' && !d.contact) return;
+    REQUIRED.concat(OPENS).sort(function (a, b) { return NUMS[a] - NUMS[b]; }).forEach(function (k) {
       lines.push(LABELS[k] + '：' + (d[k] === null ? '' : d[k]));
     });
     lines.push('', '（以下為程式用資料，請勿修改）', JSON.stringify(d));
@@ -278,8 +236,7 @@
       '&body=' + encodeURIComponent(lines.join('\n'));
   }
 
-  function markDone(res) {
-    $('noEmailNote').style.display = (res && res.contact_saved === false) ? 'block' : 'none';
+  function markDone() {
     try { localStorage.setItem(DONE_KEY, new Date().toISOString()); } catch (e) { /* 忽略 */ }
     form.style.display = 'none';
     $('setupNote').classList.remove('show');
@@ -299,10 +256,11 @@
     hideMsg();
 
     var d = collect();
-    var chk = validate(d);
-    if (chk.missing.length || chk.badEmail) {
+    var missing = validate(d);
+    if (missing.length) {
       lastSubmit = 0;  // 驗證失敗不佔用 5 秒冷卻
-      showMsg(chk.missing.length ? '還有 ' + chk.missing.length + ' 題尚未完成，已用紅框標示，請補填後再送出。' : 'Email 格式看起來不正確，請檢查（或改選「不願意」）。');
+      showMsg('還有 ' + missing.length + ' 題必填題尚未作答（第 ' + missing.map(function (k) { return NUMS[k]; }).join('、') +
+        ' 題），已用紅框標示，請補填後再送出。');
       var first = document.querySelector('.q.err'); if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -327,19 +285,19 @@
       .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (res) {
         if (!res || !res.ok) throw new Error((res && res.error) || '伺服器未回應成功');
-        markDone(res);
+        markDone();
       })
       .catch(function (err) {
         showMsg('送出失敗（' + esc(err.message || err) + '）。請稍後再按一次「送出回饋」，或<a id="mailFallback" href="' +
           mailtoHref(d) + '">改用 Email 寄出填答內容</a>。');
+        $('formMsg').scrollIntoView({ behavior: 'smooth', block: 'center' });
       })
       .then(function () { sending = false; btn.disabled = false; btn.textContent = '送出回饋'; });
   });
 
   $('againBtn').addEventListener('click', function () {
     form.reset();
-    $('roleOtherBox').classList.remove('show');
-    $('contactBox').classList.remove('show');
+    OPENS.forEach(function (k) { $(k + '_n').textContent = '0'; });
     document.querySelectorAll('.q.err').forEach(function (q) { q.classList.remove('err'); });
     $('doneBox').classList.remove('show');
     form.style.display = '';

@@ -3,66 +3,76 @@
 第 36 屆環境教育學術暨實務交流國際研討會　壁報 A155-07 的玩後回饋問卷。
 網址：<https://rlirdo.github.io/serpentine-webar/feedback/>
 
+**目前版本：schema `webar-feedback-v2`（2026/10/29 改版）**——環境知識、環境態度、行動意向、科學探究
+四面向，每面向 3 題選擇（必填）＋1 題簡答（選填），共 16 題；不蒐集身分、裝置與 email。
+
 ## 檔案
 
 | 路徑 | 用途 |
 |---|---|
 | `index.html` | 問卷網頁（手機優先、單頁、不記名） |
 | `config.js` | 中繼網址 `window.FEEDBACK_ENDPOINT`；空字串＝尚未啟用，改用 Email 備援（811554006@gms.ndhu.edu.tw） |
-| `relay/Code.gs` | Google Apps Script 中繼：收 POST → 驗證 → GitHub Contents API 寫入 `responses/` |
-| `relay/設定說明_AppsScript與GitHubToken.md` | 建 token、部署 Apps Script、填網址、測試、換 token 的逐步說明 |
-| `responses/` | 每筆回覆一個 JSON：`YYYYMMDD-HHMMSS_<6碼>.json`（台北時間） |
+| `relay/Code.gs` | Google Apps Script 中繼：收 POST → 白名單驗證 → GitHub Contents API 寫入 `responses/` |
+| `relay/設定說明_AppsScript與GitHubToken.md` | 建 token、部署 Apps Script、**v2 改版後重新部署**、測試、換 token 的逐步說明 |
+| `responses/` | 每筆回覆一個 JSON：`YYYYMMDD-HHMMSS_<6碼>.json`（台北時間）；v1 與 v2 回覆並存 |
 
 ## 資料流程
 
 ```
 問卷網頁 ──POST text/plain JSON──▶ Apps Script（doPost）──PUT Contents API──▶ feedback/responses/*.json
-                                       └─（設定 SHEET_ID 時）append 一列到主持人私人 Google Sheet（含 email）
 ```
 
-- **email 不寫進公開 repo**：`responses/*.json` 的 `contact` 一律為空字串（保留 `contact_ok`）；email 只寫入 `SHEET_ID` 指定的私人試算表。
-  未設定 `SHEET_ID` 時 email 直接丟棄，中繼回應 `contact_saved:false`，網頁感謝畫面提示「目前未啟用 email 收集」。
 - GitHub token 只存在 Apps Script 的「指令碼屬性」`GITHUB_TOKEN`，**不在網頁、不在 repo**。
 - 網頁用 `Content-Type: text/plain` 送出，避免 CORS preflight。
-- 防灌水：隱藏 honeypot 欄位、所有題目必填檢查、送出鍵 5 秒內只接受一次；中繼端再做白名單欄位與選項檢查、字串截斷。
+- 防灌水：隱藏 honeypot 欄位、必填檢查、送出鍵 5 秒內只接受一次；中繼端再做白名單欄位與選項檢查、字串截斷。
 - 本機 localStorage 記「已填過」只做提醒，仍可再填一份。
+- 中繼只接受目前的 schema；改版 Code.gs 後必須在 Apps Script **以「新版本」重新部署**（網址不變）。
 
-## 回覆 JSON 格式（schema `webar-feedback-v1`，欄位順序固定）
+## 回覆 JSON 格式（schema `webar-feedback-v2`，欄位順序固定）
 
 ```json
 {
-  "schema": "webar-feedback-v1",
+  "schema": "webar-feedback-v2",
   "submitted_at": "2026-10-31T10:21:05+08:00",
   "event": "SEET2026-A155-07",
-  "role": "國小教師|國中教師|高中教師|大專教師|研究生|大學生|其他",
-  "role_other": "",
-  "teach_level": "國小|國中|高中|大專|不適用",
-  "played": "完整玩完|玩了一部分|只看示範",
-  "device": "iPhone|Android|平板|電腦|其他",
-  "q1_clear": 1, "q2_fun": 1, "q3_easy": 1, "q4_mechanism": 1, "q5_feedback_useful": 1, "q6_use_in_class": 1,
-  "best_part": "字串",
-  "suggest": "字串",
-  "fit_level": "國小高年級|國中|高中|皆可|皆不適合",
-  "contact_ok": "願意|不願意",
-  "contact": "",
+  "k1": "A|B|C|D", "k2": "A|B|C|D", "k3": "A|B|C|D", "k_open": "字串（可空，≤300 字）",
+  "a1": 1, "a2": 1, "a3": 1, "a_open": "",
+  "i1": 1, "i2": 1, "i3": 1, "i_open": "",
+  "s1": 1, "s2": 1, "s3": 1, "s_open": "",
   "ua": "瀏覽器 UA 截短 120 字"
 }
 ```
 
-六題 1–5 分（1 非常不同意 → 5 非常同意）：
+| 題號 | 欄位 | 面向 | 題目 | 作答 |
+|---|---|---|---|---|
+| 1 | k1 | 環境知識 | 把墨玉（蛇紋石）磨成約 2–4 微米微米粉的最主要好處 | A–D |
+| 2 | k2 | 環境知識 | DSW 中最適合補進蛇紋石晶格空位的離子 | A–D |
+| 3 | k3 | 環境知識 | 配製反應液時最符合綠色化學的做法 | A–D |
+| 4 | k_open | 環境知識 | 這個遊戲讓您學到的一個新知識 | 簡答（選填） |
+| 5 | a1 | 環境態度 | 閒置石材也可能是值得再利用的資源 | 1–5 |
+| 6 | a2 | 環境態度 | 認同優先用水、避免有毒溶劑與強酸的綠色化學 | 1–5 |
+| 7 | a3 | 環境態度 | 花蓮在地資源值得珍惜與善加利用 | 1–5 |
+| 8 | a_open | 環境態度 | 對閒置石材或在地資源的看法改變 | 簡答（選填） |
+| 9 | i1 | 行動意向 | 願意做好垃圾分類與資源回收 | 1–5 |
+| 10 | i2 | 行動意向 | 願意分類收集並妥善處理廢液、廢棄物 | 1–5 |
+| 11 | i3 | 行動意向 | 願意分享在地資源再利用與綠色化學觀念 | 1–5 |
+| 12 | i_open | 行動意向 | 想採取的環境行動 | 簡答（選填） |
+| 13 | s1 | 科學探究 | 更理解工作假設需由實驗證據驗證 | 1–5 |
+| 14 | s2 | 科學探究 | 對用儀器（FTIR）找證據更感興趣 | 1–5 |
+| 15 | s3 | 科學探究 | 想進一步探究 Mg²⁺ 補進晶格這類問題 | 1–5 |
+| 16 | s_open | 科學探究 | 最想用實驗弄清楚的一個問題 | 簡答（選填） |
 
-| 欄位 | 題目 |
-|---|---|
-| q1_clear | 遊戲說明清楚易懂 |
-| q2_fun | 遊戲有趣 |
-| q3_easy | AR 操作容易 |
-| q4_mechanism | 透過「把 Mg²⁺ 補進晶格」，我更理解離子交換機制 |
-| q5_feedback_useful | 前後測與即時回饋對教學有幫助 |
-| q6_use_in_class | 我願意在自己的課堂試用 |
+量表 1–5：1 非常不同意、2 不同意、3 普通、4 同意、5 非常同意。完整題幹與選項見 `index.html` 的 `SECTIONS`。
+知識題的正解表不放在本公開 repo，由主持人的撈取工具計分。
+`submitted_at` 以 Apps Script 伺服器時間（Asia/Taipei）覆寫。
 
-`submitted_at` 以 Apps Script 伺服器時間（Asia/Taipei）覆寫。`contact` 在 repo 內永遠是空字串；email 請到私人試算表查（第一欄 `file` 為對應的 JSON 檔名）。
+## 舊版 v1（2026/10/22–10/28）
+
+`responses/` 內 schema 為 `webar-feedback-v1` 的檔案保留不動，欄位為：
+`role, role_other, teach_level, played, device, q1_clear…q6_use_in_class（1–5）, best_part, suggest, fit_level, contact_ok, contact（一律空字串）, ua`。
+撈取工具會同時讀 v1 與 v2，彙整表以 v2 欄位為主並標示版本。
 
 ## 隱私
 
-不蒐集姓名、學號、學校名稱。Email 為選填，只在填答者選「願意」時記錄，**只存於主持人之私人 Google 試算表**，不會出現在本公開 repo，用途僅限後續教學包試用邀請。
-本 repo 為公開 repo，`responses/` 內容（不含 email）任何人都看得到。
+v2 不蒐集姓名、學號、學校、email、身分與裝置；只記錄作答、送出時間與截短的瀏覽器版本。
+本 repo 為公開 repo，`responses/` 內容任何人都看得到。

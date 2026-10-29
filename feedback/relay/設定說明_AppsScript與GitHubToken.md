@@ -4,6 +4,25 @@
 > token 只貼在兩個地方：GitHub 產生它的那一頁（看一次就關掉）、Apps Script 的「指令碼屬性」。
 > 不要貼進對話、Email、LINE、任何檔案或 repo。
 
+## ★ 2026/10/29 v2 改版後必做：重新部署為「新版本」
+
+問卷已改為 schema `webar-feedback-v2`（環境知識、環境態度、行動意向、科學探究四面向 × 各 3 題選擇＋1 題簡答，
+不再蒐集身分、裝置與 email）。中繼的白名單（`SCHEMA`、欄位檢查）寫在 `Code.gs` 裡，
+**Apps Script 上還是舊版 v1 時，新問卷送出會被擋下（回應「schema 不符」）**，所以一定要重新部署：
+
+1. 開啟 <https://script.google.com/> → 專案 `WebAR回饋問卷中繼`。
+2. 編輯器內 `Code.gs` 全選（Ctrl+A）刪除 → 貼上本 repo 新版 `feedback/relay/Code.gs` 全文 → 儲存（Ctrl+S）。
+3. 右上 **部署** → **管理部署作業** → 選原本那個網頁應用程式 → 右上 **鉛筆（編輯）**。
+4. 「版本」下拉選 **新版本**（說明可填 `v2 2026/10/29`）→ **部署**。
+   **不要**按「新增部署作業」，否則 `/exec` 網址會改變，`config.js` 就得跟著改。
+5. 檢查：瀏覽器打開原本的 `/exec` 網址，應看到 `"schema":"webar-feedback-v2"` 與 `"token_set":true`。
+6. 指令碼屬性 `GITHUB_TOKEN` 不用動；`SHEET_ID` v2 已不使用，可留可刪。
+
+> 以下步驟 1–6 為 v1 首次建置時的完整說明（token、部署、測試、換 token），v2 沿用同一個專案與網址。
+> 其中「步驟 1.5 私人試算表／email」與步驟 5 的 email 測試在 v2 已不適用。
+
+---
+
 整體流程：問卷網頁 → 送到你的 Apps Script 網頁應用程式 → Apps Script 用 token 把一筆 JSON 寫進
 `rlirdo/serpentine-webar` 的 `feedback/responses/`。網頁本身完全不知道 token。
 
@@ -77,7 +96,7 @@
    （這是你自己寫的腳本，要求的權限是「連線到外部服務」與「試算表」，用來呼叫 GitHub 與寫試算表。）
 6. 出現「網頁應用程式」網址，形如 `https://script.google.com/macros/s/AKfycb…/exec` → 按 **複製**。
 7. 檢查：把這個網址貼到瀏覽器網址列打開，應該看到
-   `{"ok":true,"service":"webar-feedback-relay","schema":"webar-feedback-v1","token_set":true}`。
+   `{"ok":true,"service":"webar-feedback-relay","schema":"webar-feedback-v2","token_set":true}`（v1 時期為 `webar-feedback-v1`）。
    若 `token_set` 是 `false`，回到步驟 2 檢查屬性名稱是否完全是 `GITHUB_TOKEN`。
 
 > 這個 `/exec` 網址**不是秘密**（它會公開放在網頁裡），可以貼給 Claude 代改設定檔。
