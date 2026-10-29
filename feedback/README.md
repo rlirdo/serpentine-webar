@@ -15,6 +15,7 @@
 | `relay/Code.gs` | Google Apps Script 中繼：收 POST → 白名單驗證 → GitHub Contents API 寫入 `responses/` |
 | `relay/設定說明_AppsScript與GitHubToken.md` | 建 token、部署 Apps Script、**v2 改版後重新部署**、測試、換 token 的逐步說明 |
 | `responses/` | 每筆回覆一個 JSON：`YYYYMMDD-HHMMSS_<6碼>.json`（台北時間）；v1 與 v2 回覆並存 |
+| `game/` | 遊戲前後測作答，每筆一個 JSON：`YYYYMMDD-HHMMSS_<pre\|post>_<6碼>.json`（2026/10/29 起） |
 
 ## 資料流程
 
@@ -65,6 +66,30 @@
 量表 1–5：1 非常不同意、2 不同意、3 普通、4 同意、5 非常同意。完整題幹與選項見 `index.html` 的 `SECTIONS`。
 知識題的正解表不放在本公開 repo，由主持人的撈取工具計分。
 `submitted_at` 以 Apps Script 伺服器時間（Asia/Taipei）覆寫。
+
+## 遊戲前後測作答（schema `webar-game-v1`，2026/10/29 新增）
+
+遊戲本身（`ar.html`／`play.html`，程式在 `js/report.js`）在**前測做完**與**整局結束**時各送一筆到同一個中繼，
+中繼寫入 `game/<YYYYMMDD-HHMMSS>_<pre|post>_<6碼>.json`。自動通關測試（`?autoplay=1`）不上傳。
+
+```json
+{
+  "schema": "webar-game-v1", "submitted_at": "2026-10-31T10:21:05+08:00", "event": "SEET2026-A155-07",
+  "pid": "匿名玩家代碼 12 碼（存在玩家裝置 localStorage；無痕模式每次新產生）",
+  "sid": "本局代碼 12 碼（前測與後測相同）",
+  "phase": "pre | post", "grade": "elem | junior", "mode": "ar | play", "client_time": "裝置時間 ISO",
+  "pre":  [{"id": "E1", "facet": "知識", "pick": 0, "correct": true}, "…共 3 題"],
+  "post": ["phase=post 時 5 題（同 3 題＋行動 1 題＋其他 1 題）；pre 時為 []"],
+  "preScore": 2, "postSame3": 2, "postScore": 3,
+  "stars": [3, 2, 3, 1, 3, 3, 2, 3], "totalStars": 20,
+  "facets": {"知識": 100, "態度": 50, "行動": 75, "探究": 60},
+  "commit": "小行動承諾（≤80 字）", "ua": "瀏覽器 UA 截短 120 字"
+}
+```
+
+- `pick` 是題庫 `js/content.js` `BANK` 內的**原始選項索引**（0–3；正解一律索引 0，畫面上會洗牌）。
+- 撈取工具以 `pid` 判斷重複：同一玩家代碼 30 分鐘內的第二筆前測／後測略過，只取第一次；超過 30 分鐘視為再玩一次。
+- 不蒐集姓名、學號、學校、email；pid 是隨機代碼，無法回推身分。
 
 ## 舊版 v1（2026/10/22–10/28）
 

@@ -4,6 +4,15 @@
 > token 只貼在兩個地方：GitHub 產生它的那一頁（看一次就關掉）、Apps Script 的「指令碼屬性」。
 > 不要貼進對話、Email、LINE、任何檔案或 repo。
 
+## ★★ 2026/10/29 晚間 v3：遊戲前後測作答上傳，再次重新部署為「新版本」
+
+遊戲（`ar.html`／`play.html`）現在會在**前測做完**與**整局結束**時，各送一筆不記名作答
+（schema `webar-game-v1`：匿名玩家代碼 pid、本局代碼 sid、phase pre／post、版本、模式、每題選項與對錯、星數、承諾）
+到**同一個** Apps Script 中繼，由中繼寫進 `feedback/game/`。
+`Code.gs` 已加入 `GAME_SCHEMA` 白名單；**雲端還是 v2 時，遊戲上傳會被擋「schema 不符」、不會存進 GitHub**（遊戲本身照常可玩）。
+步驟與 v2 完全相同（下方 1–6），版本說明可填 `v3 2026/10/29 game`；檢查 `/exec` 網址時應看到
+`"schemas":["webar-feedback-v2","webar-game-v1"]`。之後用撈取工具「WebAR 遊戲前後測」區塊下載並匯出 Excel。
+
 ## ★ 2026/10/29 v2 改版後必做：重新部署為「新版本」
 
 問卷已改為 schema `webar-feedback-v2`（環境知識、環境態度、行動意向、科學探究四面向 × 各 3 題選擇＋1 題簡答，

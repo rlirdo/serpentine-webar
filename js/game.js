@@ -7,6 +7,7 @@ import { BANK, CREDIT, ENDING, FACETS, FACET_NAMES, GRADE_ASK, GRADE_LABEL, INTR
 import { Tweens, ease, makeLabel, glowSprite, Particles, Ripples, disposeTree } from "./fx.js";
 import { Xiaojing } from "./character.js";
 import { makeRock, stoneMaterial, makeLattice, makeFlask, makeMicelle, makeIon, makeFe, makeBottle, makeChart } from "./models.js";
+import { createReporter } from "./report.js";
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const HOME = V(-0.38, 0.33, 0.34), HOME_S = 0.15;
@@ -21,6 +22,8 @@ export function createGame({ stage, camera, renderer, hud, host }) {
   const wait = (s) => tw.wait(s);
   const S = { grade: "elem", pre: [], post: [], stars: Array(8).fill(0), commit: null, level: -1, irRate: 0, irTimer: 0 };
   const T = (x) => (x == null ? "" : typeof x === "string" ? x : x[S.grade] || x.elem);
+  // 作答匿名上傳：自動通關（測試）不上傳
+  const reporter = createReporter({ mode: host.mode, enabled: !host.autoplay });
   let updaters = [];
   const onUpdate = (fn) => { updaters.push(fn); return fn; };
 
@@ -165,7 +168,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
         done = true;
         const o = Number(b.dataset.o);
         const correct = o === q.answer;
-        (isPre ? S.pre : S.post).push({ id: q.id, facet: q.facet, correct });
+        (isPre ? S.pre : S.post).push({ id: q.id, facet: q.facet, pick: o, correct });
         if (isPre) {
           b.classList.add("picked");
           audio.tap();
@@ -1115,6 +1118,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
   function showResult() {
     const R = computeResult();
     saveRecord(R);
+    reporter.send("post", S, R);
     hud.setTitle("任務完成！");
     hud.setProgress(-1, 8);
     hud.showPanel(false);
@@ -1147,7 +1151,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
       <div class="sec-title">四個面向</div>
       <div class="cmp">${FACETS.map((f) => `<span>${FACET_NAMES[f]}</span>${bar(R.facets[f], 100, { 知識: "#1c7293", 態度: "#2e7d5b", 行動: "#c99a3e", 探究: "#ef6c3c" }[f])}<b>${R.facets[f]}%</b>`).join("")}</div>
       <div class="explain">${ENDING.honesty}</div>
-      <p class="small">可以截圖保存證書。成績只存在這台裝置，不會上傳。</p>
+      <p class="small">可以截圖保存證書。作答結果會以不記名方式（無姓名、學號）上傳作研究統計。</p>
       <div class="row"><button class="btn alt again">再玩一次</button><a class="btn gold" href="teacher.html">給老師看</a></div>`, {
       // 語音：結果頁摘要（星數與一句恭喜）＋工作假設提醒
       speech: `恭喜你完成墨玉晶格修復任務的八個實驗步驟！\n你一共得到 ${R.stars} 顆星，滿分是 24 顆。\n前測答對 ${R.preScore} 題，後測同樣的 3 題答對 ${R.postSame} 題。\n${ENDING.honesty}`,
@@ -1160,6 +1164,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     try {
       await intro();
       await quiz("pre");
+      reporter.send("pre", S); // 前測做完先上傳（玩到一半也留有前測）
       for (let i = 0; i < 8; i++) await level(i);
       clearLab();
       keep.visible = false;
@@ -1200,6 +1205,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     start() { if (!started) { started = true; run(); } },
     get started() { return started; },
     state: S,
+    reporter,
     xj,
   };
 }
