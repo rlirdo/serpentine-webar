@@ -1,0 +1,40 @@
+{
+  "schema": "webar-game-v1",
+  "submitted_at": "2026-10-30T16:34:39+08:00",
+  "event": "SEET2026-A155-07",
+  "pid": "3wzkuffmromi",
+  "sid": "5a7kor1s3lah",
+  "phase": "pre",
+  "grade": "elem",
+  "mode": "ar",
+  "client_time": "2026-10-30T08:34:37.903Z",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 2,
+      "correct": false
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [],
+  "preScore": 2,
+  "postSame3": "",
+  "postScore": "",
+  "stars": [],
+  "totalStars": "",
+  "facets": {},
+  "commit": "",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36"
+}
