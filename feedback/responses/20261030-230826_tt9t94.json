@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-10-30T23:08:26+08:00",
+  "event": "SEET2026-A155-07",
+  "k1": "B",
+  "k2": "C",
+  "k3": "A",
+  "k_open": "粒徑越小表面積越大",
+  "a1": 5,
+  "a2": 5,
+  "a3": 5,
+  "a_open": "沒人要的資材也能加值",
+  "i1": 5,
+  "i2": 5,
+  "i3": 5,
+  "i_open": "廢電池分類回收",
+  "s1": 5,
+  "s2": 5,
+  "s3": 5,
+  "s_open": "補好晶格後 遠紅外線會增強嗎",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36"
+}
