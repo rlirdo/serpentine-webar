@@ -1,4 +1,4 @@
-// 語音導覽（2.0.0）：只用瀏覽器內建 Web Speech API（speechSynthesis），不載入音檔、不連外部服務。
+// 語音導覽（2.1.0，2026/10/30：數字一律轉中文，避免「第 2 題」唸成「第兩題」）：只用瀏覽器內建 Web Speech API（speechSynthesis），不載入音檔、不連外部服務。
 // - 畫面文字不變；送去唸之前先 normalizeForSpeech() 把化學符號、縮寫、標點轉成可唸的中文。
 // - 新的對話文字出現時先 cancel() 舊語音；提示框（toast）排在後面唸，不打斷。
 // - 沒有 speechSynthesis 或沒有中文語音時靜默降級，只在 HUD 顯示一次小提示，不丟例外、不卡流程。
@@ -41,6 +41,13 @@ const RULES = [
   [/\bAR\b/g, "A R"],
   // 單位
   [/\s*°\s*C/g, " 度"],
+  [/\s*[μµ]m(?![A-Za-z])/g, " 微米"],
+  [/(^|[^A-Za-z\s])\s*nm(?![A-Za-z])/g, "$1 奈米"],
+  [/(^|[^A-Za-z\s])\s*mL(?![A-Za-z])/g, "$1 毫升"],
+  [/(^|[^A-Za-z\s])\s*cm(?![A-Za-z])/g, "$1 公分"],
+  [/(^|[^A-Za-z\s])\s*mm(?![A-Za-z])/g, "$1 毫米"],
+  [/(^|[^A-Za-z\s])\s*kHz(?![A-Za-z])/g, "$1 千赫"],
+  [/(^|[^A-Za-z\s])\s*rpm(?![A-Za-z])/g, "$1 轉"],
   [/(\d+(?:\.\d+)?)\s*[%％]/g, "百分之$1"],
   [/(\d)\.(\d)/g, "$1點$2"],
   // 數字區間與分數
@@ -81,6 +88,55 @@ const RULES = [
   [/\s*:\s*/g, "："],
 ];
 
+// ---------------------------------------------------------------- 數字 → 中文（2.1.0）
+// TTS 直接唸阿拉伯數字時，「第 2 題」會唸成「第兩題」，「2到4」也可能唸成「兩到四」。
+// 因此在送去唸之前把所有數字轉成中文：序數（第二、二到四、百分之二、清單編號二、）用「二」；
+// 數量（兩題、兩顆星、兩百度、兩次）用「兩」；小數逐位唸（零點五）。
+const DIG = "零一二三四五六七八九";
+function cnInt(n, { liang = false } = {}) {
+  n = Number(n);
+  if (!Number.isFinite(n) || n < 0) return String(n);
+  if (n === 0) return "零";
+  if (n === 2 && liang) return "兩";
+  if (n < 10) return DIG[n];
+  if (n < 20) return "十" + (n % 10 ? DIG[n % 10] : "");
+  if (n < 100) return DIG[Math.floor(n / 10)] + "十" + (n % 10 ? DIG[n % 10] : "");
+  if (n < 1000) {
+    const h = Math.floor(n / 100), r = n % 100;
+    const hs = (h === 2 && liang ? "兩" : DIG[h]) + "百";
+    if (!r) return hs;
+    if (r < 10) return hs + "零" + DIG[r];
+    return hs + cnInt(r, { liang });
+  }
+  if (n < 10000) {
+    const t = Math.floor(n / 1000), r = n % 1000;
+    const ts = (t === 2 && liang ? "兩" : DIG[t]) + "千";
+    if (!r) return ts;
+    if (r < 100) return ts + "零" + cnInt(r, { liang });
+    return ts + cnInt(r, { liang });
+  }
+  return [...String(n)].map((d) => DIG[Number(d)]).join(""); // 更大的數逐位唸
+}
+function cnDigits(str) { return [...String(str)].map((d) => DIG[Number(d)]).join(""); }
+const NUM_RULES = [
+  // 小數：先把「3點5」（由上面的規則產生）或「3.5」轉成「三點五」
+  [/(\d+)[點.](\d+)/g, (m, a, b) => cnInt(a) + "點" + cnDigits(b)],
+  // 序數：第 N（題、關、步、次…）一律「第二」
+  [/第\s*(\d+)/g, (m, a) => "第" + cnInt(a)],
+  // 百分之 N、區間 N到M：用「二」
+  [/百分之\s*(\d+)/g, (m, a) => "百分之" + cnInt(a)],
+  [/(\d+)\s*到\s*(\d+)/g, (m, a, b) => cnInt(a) + "到" + cnInt(b)],
+  // 清單編號「1、」「2、」（句首或標點後）：用「二」
+  [/(^|[\s，。；！？：])(\d+)、/g, (m, pre, a) => pre + cnInt(a) + "、"],
+  // 其餘：數量，2 唸「兩」（兩題、兩顆星、兩百度、兩次）
+  [/\d+/g, (m) => cnInt(m, { liang: true })],
+];
+export function numbersToChinese(s) {
+  let out = String(s);
+  for (const [re, to] of NUM_RULES) out = out.replace(re, to);
+  return out;
+}
+
 const PUNCT = "，。！？、；：";
 function tidy(s) {
   return s
@@ -90,6 +146,8 @@ function tidy(s) {
     .replace(/^[\s，、；：。]+/, "")
     .replace(/[\s，、；：]+$/, "")
     .replace(/\s*([，。！？、；：])\s*/g, "$1")
+    // 中文字之間不留空白（TTS 會在空白處停頓，「第二 題」會唸得斷斷續續）
+    .replace(/([㐀-䶿一-鿿])[ 　]+(?=[㐀-䶿一-鿿])/g, "$1")
     .trim();
 }
 
@@ -106,6 +164,7 @@ export function speechResidue(s) {
 export function normalizeForSpeech(text, { sweep = true } = {}) {
   let s = String(text == null ? "" : text);
   for (const [re, to] of RULES) s = s.replace(re, to);
+  s = numbersToChinese(s);
   s = tidy(s);
   if (sweep) {
     s = [...s].map((ch) => (ALLOWED.test(ch) ? ch : " ")).join("");
