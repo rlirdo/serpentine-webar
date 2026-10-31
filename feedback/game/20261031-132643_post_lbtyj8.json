@@ -1,0 +1,85 @@
+{
+  "schema": "webar-game-v1",
+  "submitted_at": "2026-10-31T13:26:43+08:00",
+  "event": "SEET2026-A155-07",
+  "pid": "vdtkuk27k0pq",
+  "sid": "gz875d02mkaj",
+  "phase": "post",
+  "grade": "junior",
+  "mode": "ar",
+  "client_time": "2026-10-31T05:26:42.671Z",
+  "pre": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 2,
+      "correct": false
+    }
+  ],
+  "post": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J7",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J6",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "preScore": 1,
+  "postSame3": 3,
+  "postScore": 5,
+  "stars": [
+    3,
+    3,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3
+  ],
+  "totalStars": 23,
+  "facets": {
+    "知識": 100,
+    "態度": 100,
+    "行動": 100,
+    "探究": 100
+  },
+  "commit": "跟家人分享今天學到的事",
+  "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 26_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/113.0.5672.69 Mobi"
+}
