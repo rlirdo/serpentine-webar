@@ -1,0 +1,44 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-05T07:36:40+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "d6d8wdkkx1h8",
+  "sid": "rsrzd6xsc9zl",
+  "phase": "pre",
+  "grade": "elem",
+  "mode": "drive",
+  "client_time": "2026-11-04T23:36:39.254Z",
+  "age": 11,
+  "gender": "男",
+  "org": "明禮國小",
+  "hero": "kid_m",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [],
+  "preScore": 3,
+  "postSame3": "",
+  "postScore": "",
+  "stars": [],
+  "totalStars": "",
+  "facets": {},
+  "commit": "",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36"
+}
