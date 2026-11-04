@@ -1,0 +1,89 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-05T07:44:25+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "d6d8wdkkx1h8",
+  "sid": "rsrzd6xsc9zl",
+  "phase": "post",
+  "grade": "elem",
+  "mode": "drive",
+  "client_time": "2026-11-04T23:44:24.273Z",
+  "age": 11,
+  "gender": "男",
+  "org": "明禮國小",
+  "hero": "kid_m",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "preScore": 3,
+  "postSame3": 3,
+  "postScore": 5,
+  "stars": [
+    3,
+    2,
+    2,
+    2,
+    1,
+    3,
+    2,
+    1
+  ],
+  "totalStars": 16,
+  "facets": {
+    "知識": 100,
+    "態度": 100,
+    "行動": 100,
+    "探究": 67
+  },
+  "commit": "實驗廢液分類處理，不亂倒",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36"
+}
