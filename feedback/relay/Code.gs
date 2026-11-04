@@ -1,6 +1,12 @@
 /**
  * WebAR 遊戲回饋問卷＋遊戲前後測作答 中繼（Google Apps Script 網頁應用程式）
  *
+ * ★ v4：2026/11/04 新增 schema webar-game-v2（新遊戲「墨玉護衛隊：花蓮綠晶行動」，方向盤版
+ *   mode='drive'；多收 age 年齡 3–120／gender 性別（男、女、其他、不透露）／org 學校或單位 ≤60 字／
+ *   hero 主角 id ≤20 字）。同樣寫入 feedback/game/，檔名 yyyyMMdd-HHmmss_<phase>_<6碼>.json。
+ *   webar-game-v1 與 webar-feedback-v2 的行為完全不變。
+ *   貼上本檔後「需重新部署為新版本」：部署 → 管理部署作業 → 鉛筆（編輯）→ 版本選「新版本」→ 部署。
+ *   不可按「新增部署作業」（/exec 網址會改變，兩個遊戲與問卷的 config.js 都得跟著改）。
  * ★ v3：2026/10/29 晚間新增 schema webar-game-v1（遊戲內前測／後測作答，寫入 feedback/game/）。
  *   貼上本檔後同樣「需重新部署為新版本」（步驟同下）。/exec 網址不變。
  * ★ v2：2026/10/29 改版（schema webar-feedback-v2：環境知識／環境態度／行動意向／科學探究
@@ -23,6 +29,7 @@ var REPO_NAME = 'serpentine-webar';
 var RESP_DIR = 'feedback/responses';
 var SCHEMA = 'webar-feedback-v2';
 var GAME_SCHEMA = 'webar-game-v1';
+var GAME_SCHEMA_V2 = 'webar-game-v2';
 var GAME_DIR = 'feedback/game';
 var DEFAULT_EVENT = 'SEET2026-A155-07';
 var OPEN_MAX = 300;
@@ -44,10 +51,11 @@ function doPost(e) {
     var raw = (e && e.postData && e.postData.contents) || '';
     if (!raw || raw.length > 20000) return json_({ ok: false, error: '內容為空或過大' });
     var input = JSON.parse(raw);
-    if (!input || (input.schema !== SCHEMA && input.schema !== GAME_SCHEMA)) return json_({ ok: false, error: 'schema 不符' });
-    var isGame = input.schema === GAME_SCHEMA;
+    if (!input || (input.schema !== SCHEMA && input.schema !== GAME_SCHEMA && input.schema !== GAME_SCHEMA_V2)) return json_({ ok: false, error: 'schema 不符' });
+    var isV2 = input.schema === GAME_SCHEMA_V2;
+    var isGame = input.schema === GAME_SCHEMA || isV2;
 
-    var rec = isGame ? cleanGame_(input) : clean_(input);
+    var rec = isV2 ? cleanGameV2_(input) : (isGame ? cleanGame_(input) : clean_(input));
     if (rec.error) return json_({ ok: false, error: rec.error });
 
     var tz = 'Asia/Taipei';
@@ -59,7 +67,7 @@ function doPost(e) {
     if (!token) return json_({ ok: false, error: '中繼尚未設定 GITHUB_TOKEN' });
 
     var ordered = {};
-    (isGame ? GAME_FIELDS : FIELDS).forEach(function (k) { ordered[k] = rec[k]; });
+    (isV2 ? GAME_FIELDS_V2 : (isGame ? GAME_FIELDS : FIELDS)).forEach(function (k) { ordered[k] = rec[k]; });
     var body = JSON.stringify(ordered, null, 2) + '\n';
 
     var url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME +
@@ -93,7 +101,7 @@ function doPost(e) {
 /** 瀏覽器直接開 /exec 網址時的健康檢查 */
 function doGet() {
   var hasToken = !!PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  return json_({ ok: true, service: 'webar-feedback-relay', schema: SCHEMA, schemas: [SCHEMA, GAME_SCHEMA], token_set: hasToken });
+  return json_({ ok: true, service: 'webar-feedback-relay', schema: SCHEMA, schemas: [SCHEMA, GAME_SCHEMA, GAME_SCHEMA_V2], token_set: hasToken });
 }
 
 // ---------------------------------------------------------------- 遊戲前後測（webar-game-v1）
@@ -152,6 +160,30 @@ function cleanGame_(d) {
     r.postSame3 = ''; r.postScore = ''; r.stars = []; r.totalStars = ''; r.facets = {}; r.commit = '';
   }
   r.ua = str_(d.ua, 120);
+  return r;
+}
+
+// ---------------------------------------------------------------- 新遊戲方向盤版（webar-game-v2）
+// 欄位順序固定（撈取工具依此解析）
+var GAME_FIELDS_V2 = ['schema', 'submitted_at', 'event', 'pid', 'sid', 'phase', 'grade', 'mode', 'client_time',
+  'age', 'gender', 'org', 'hero',
+  'pre', 'post', 'preScore', 'postSame3', 'postScore', 'stars', 'totalStars', 'facets', 'commit', 'ua'];
+var DEFAULT_EVENT_V2 = 'HL-STATION-2026-1127';   // 2026/11/27 花蓮火車站科普展示
+var GENDERS = ['男', '女', '其他', '不透露'];
+
+/** 沿用 v1 全部驗證，再加年齡／性別／單位／主角；mode 另允許 drive */
+function cleanGameV2_(d) {
+  var r = cleanGame_(d);
+  if (r.error) return r;
+  r.schema = GAME_SCHEMA_V2;
+  r.event = str_(d.event, 40) || DEFAULT_EVENT_V2;
+  r.mode = (d.mode === 'drive' || d.mode === 'ar' || d.mode === 'play') ? d.mode : 'drive';
+  var ageRaw = d.age;
+  var age = (typeof ageRaw === 'number' || (typeof ageRaw === 'string' && /^\s*\d+\s*$/.test(ageRaw))) ? Number(ageRaw) : NaN;
+  r.age = (age >= 3 && age <= 120 && Math.floor(age) === age) ? age : '';
+  r.gender = GENDERS.indexOf(String(d.gender || '').trim()) >= 0 ? String(d.gender).trim() : '';
+  r.org = str_(d.org, 60);
+  r.hero = str_(d.hero, 20);
   return r;
 }
 

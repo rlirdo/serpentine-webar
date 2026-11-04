@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉護衛隊 遊戲回饋問卷</title>
+<meta name="description" content="墨玉護衛隊：花蓮綠晶行動 遊戲回饋問卷：環境知識、環境態度、行動意向、科學探究四面向（約 3 分鐘，不記名）。">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { background: radial-gradient(130% 90% at 50% 0%, #14507a 0%, #0b2a47 50%, #071629 100%);
+         -webkit-user-select: text; user-select: text; }
+  input, textarea, select { -webkit-user-select: text; user-select: text; font-family: inherit; }
+  .kicker { color: #7ef0b4; font-weight: 700; letter-spacing: 2px; font-size: 15px; }
+  h1.hero-title { font-size: 25px; line-height: 1.35; margin: 8px 0 6px; }
+  .sub { color: #a7e3cf; font-size: 15px; line-height: 1.55; margin: 0 0 6px; }
+  .notice { font-size: 15px; line-height: 1.6; color: #cfe8df; }
+  .notice b { color: #ffd76a; }
+  .setup { display: none; margin: 10px 0; padding: 10px 12px; border-radius: 12px;
+           background: rgba(201, 154, 62, .18); border: 1px solid rgba(224, 179, 90, .6); color: #ffe7b0; font-size: 15px; line-height: 1.55; }
+  .setup.show { display: block; }
+  .sec { margin: 26px 0 4px; padding: 10px 14px; border-radius: 14px; border-left: 6px solid #7ef0b4;
+         background: rgba(126, 240, 180, .10); }
+  .sec .en { display: block; color: #7ef0b4; font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+  .sec h2 { margin: 2px 0 2px; font-size: 21px; line-height: 1.35; color: #fff; }
+  .sec p { margin: 0; font-size: 14px; color: #a9c4d6; line-height: 1.5; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .q { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 16px;
+       padding: 12px 14px 14px; margin: 12px 0; }
+  .q.err { border-color: #ff8a7a; box-shadow: 0 0 0 2px rgba(224, 87, 75, .45); }
+  .q legend, .q .lab { display: block; font-weight: 700; font-size: 17px; line-height: 1.5; margin-bottom: 8px; padding: 0; }
+  .q legend { float: left; width: 100%; }
+  .q legend + * { clear: both; }
+  .q .num { color: #ffd76a; margin-right: 4px; }
+  .q .req { color: #ff9d8f; font-size: 14px; margin-left: 4px; font-weight: 400; }
+  .q .opt-tag { color: #a9c4d6; font-size: 14px; margin-left: 4px; font-weight: 400; }
+  .opt { position: relative; display: block; }
+  .opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .opt span { display: flex; align-items: center; min-height: 44px; padding: 8px 14px;
+              border-radius: 12px; border: 1px solid rgba(255, 255, 255, .3); background: rgba(11, 31, 58, .55);
+              font-size: 16px; cursor: pointer; line-height: 1.4; }
+  .opt input:checked + span { background: linear-gradient(180deg, #e0b35a, var(--gold)); color: var(--navy);
+                              border-color: #f3d48f; font-weight: 700; }
+  .opt input:focus-visible + span { outline: 3px solid #7ef0b4; outline-offset: 2px; }
+  .mc { display: flex; flex-direction: column; gap: 8px; }
+  .mc .opt span b { flex: 0 0 auto; margin-right: 10px; color: #ffd76a; }
+  .mc .opt input:checked + span b { color: var(--navy); }
+  .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .likert .opt span { flex-direction: column; justify-content: center; text-align: center; width: 100%;
+                      min-height: 62px; padding: 6px 2px; }
+  .likert .opt span b { font-size: 19px; line-height: 1.1; }
+  .likert .opt span small { font-size: 12px; line-height: 1.2; margin-top: 3px; word-break: break-all; }
+  textarea { box-sizing: border-box; display: block; width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .35);
+             background: rgba(255, 255, 255, .95); color: var(--ink); min-height: 84px; resize: vertical; line-height: 1.5; }
+  .count { text-align: right; font-size: 13px; color: #a9c4d6; margin-top: 4px; }
+  .hp { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .msg { display: none; margin: 12px 0; padding: 12px 14px; border-radius: 14px; font-size: 16px; line-height: 1.6; }
+  .msg.show { display: block; }
+  .msg.bad { background: rgba(224, 87, 75, .2); border: 1px solid #ff8a7a; color: #ffe1dc; }
+  .msg.info { background: rgba(28, 114, 147, .3); border: 1px solid #5fb6d6; color: #dff4ff; }
+  .msg a { color: #ffd76a; font-weight: 700; }
+  .submit-wrap { margin: 18px 0 8px; }
+  .submit-wrap .btn { width: 100%; min-height: 58px; font-size: 19px; }
+  .done { display: none; text-align: center; padding: 26px 16px; }
+  .done.show { display: block; }
+  .done .big { font-size: 26px; font-weight: 800; color: #ffd76a; margin: 8px 0 10px; }
+  .done .stack { max-width: 420px; margin: 18px auto; }
+  .privacy { font-size: 14px; color: #a9c4d6; line-height: 1.6; margin-top: 14px; }
+  #credit { position: static; display: inline-block; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="page"><div class="page-inner">
+  <div class="kicker">FEEDBACK · 墨玉護衛隊：花蓮綠晶行動</div>
+  <h1 class="hero-title">墨玉護衛隊 遊戲回饋問卷（約 3 分鐘，不記名）</h1>
+  <p class="sub">2026/11/27 花蓮火車站科普展示</p>
+  <p class="notice">謝謝您試玩！問卷分<b>環境知識、環境態度、行動意向、科學探究</b>四部分，每部分 3 題選擇題（必填）＋1 題簡答（選填）。本問卷<b>不記名，不蒐集 email 等可識別個人的資料</b>，回覆只用於改進遊戲與教學設計。</p>
+
+  <div id="setupNote" class="setup">回饋系統設定中：目前送出時會改用 Email（開啟您的郵件 App）寄出填答內容，造成不便敬請見諒。</div>
+  <div id="againNote" class="msg info">這台裝置之前已經填過一次問卷，謝謝您！如果想補充意見，仍可以再填一次。</div>
+
+  <form id="fbForm" novalidate>
+    <div class="hp" aria-hidden="true"><label>網站（請留空）<input type="text" name="website" id="website" tabindex="-1" autocomplete="off"></label></div>
+    <div id="qArea"></div>
+
+    <div id="formMsg" class="msg bad" role="alert"></div>
+
+    <div class="submit-wrap"><button type="submit" id="submitBtn" class="btn gold">送出回饋</button></div>
+    <p class="privacy">隱私說明：不記名，不蒐集 email、身分與裝置資訊；只記錄上述作答、送出時間與瀏覽器版本（截短）。回覆以不記名 JSON 存於公開 GitHub repo，只用於改進遊戲與教學研究。</p>
+  </form>
+
+  <div id="doneBox" class="done" role="status">
+    <div style="font-size:46px">💚</div>
+    <div class="big">感謝您的回饋！</div>
+    <p class="notice">您的意見會幫助我們把墨玉護衛隊遊戲做得更好。</p>
+    <div class="stack">
+      <a class="btn gold" href="../">🎮 再玩一次</a>
+      <button type="button" class="btn ghost" id="againBtn">✏️ 再填一份</button>
+    </div>
+  </div>
+
+  <div id="credit">NDHU自資系游豐兆製作</div>
+</div></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var ENDPOINT = (window.FEEDBACK_ENDPOINT || '').trim();
+  var MAILTO = '811554006@gms.ndhu.edu.tw';
+  var EVENT = 'HL-STATION-2026-1127';
+  var SCHEMA = 'webar-feedback-v2';
+  var DONE_KEY = 'hualienHarmony.feedbackDone';
+  var OPEN_MAX = 300;
+  var LETTERS = ['A', 'B', 'C', 'D'];
+  var SCALE = ['非常不同意', '不同意', '普通', '同意', '非常同意'];
+
+  // 四面向 × 3 題選擇（必填）＋ 1 題簡答（選填）。知識題選項以 A–D 送出；正解只在撈取工具內，不放在本頁。
+  var SECTIONS = [
+    { en: 'PART 1 · KNOWLEDGE', title: '一、環境知識', desc: '四選一，請憑玩過遊戲的印象作答。', type: 'mc', items: [
+      ['k1', '遊戲中把墨玉（蛇紋石）磨成約 2–4 微米的微米粉，最主要的好處是什麼？',
+        ['讓粉末溶解成透明的液體', '總表面積大幅增加，能和溶液接觸反應的位置變多', '讓石頭的質量變輕到幾乎為零', '讓蛇紋石直接變成碳酸鈣']],
+      ['k2', '第五關滴入花蓮外海深層海水（DSW）後，哪一種離子被設定為最適合補進蛇紋石晶格空位？',
+        ['Ca²⁺（鈣離子）', 'Na⁺（鈉離子）', 'Mg²⁺（鎂離子）', 'Cl⁻（氯離子）']],
+      ['k3', '第三關配製反應液時，下列哪一個做法最符合「綠色化學」原則？',
+        ['以水為溶劑，避免有毒溶劑與強酸', '改用容易揮發的有機溶劑溶解粉末', '加入強酸讓反應更快', '加熱到 200 °C 快速反應']]
+    ], open: ['k_open', '這個遊戲讓您學到的一個新知識是什麼？', '例如：粒徑越小表面積越大、Mg²⁺ 可以補進晶格空位……'] },
+    { en: 'PART 2 · ATTITUDE', title: '二、環境態度', desc: '玩過這個遊戲之後，請選出最符合您想法的程度。', type: 'likert', items: [
+      ['a1', '玩過這個遊戲後，我認為沒人要的閒置石材（如墨玉）也可能是值得再利用的資源。'],
+      ['a2', '玩過這個遊戲後，我認同做實驗時應優先用水、避免有毒溶劑與強酸的綠色化學做法。'],
+      ['a3', '玩過這個遊戲後，我覺得花蓮在地資源（如蛇紋石、深層海水）值得珍惜與善加利用。']
+    ], open: ['a_open', '玩完之後，您對「閒置石材」或「花蓮在地資源」的看法有什麼改變？', '例如：原來沒人要的石頭也能變成材料……'] },
+    { en: 'PART 3 · ACTION', title: '三、行動意向', desc: '玩過這個遊戲之後，請選出最符合您想法的程度。', type: 'likert', items: [
+      ['i1', '玩過這個遊戲後，我願意在生活中做好垃圾分類與資源回收，減少浪費。'],
+      ['i2', '玩過這個遊戲後，我願意把廢液、廢棄物分類收集並妥善處理，不隨意倒進水槽或水溝。'],
+      ['i3', '玩過這個遊戲後，我願意和家人、朋友或學生分享在地資源再利用與綠色化學的觀念。']
+    ], open: ['i_open', '玩完之後，您會想採取什麼環境行動？（越具體越好）', '例如：回家把廢油、廢電池分類回收……'] },
+    { en: 'PART 4 · INQUIRY', title: '四、科學探究', desc: '玩過這個遊戲之後，請選出最符合您想法的程度。', type: 'likert', items: [
+      ['s1', '玩過這個遊戲後，我更理解「工作假設」要靠實驗與儀器量測的證據來驗證，不能直接當成結論。'],
+      ['s2', '玩過這個遊戲後，我對用儀器（如 FTIR 光譜）找證據的科學探究方式更感興趣。'],
+      ['s3', '玩過這個遊戲後，我會想進一步了解或動手探究「Mg²⁺ 補進晶格」這類材料科學問題。']
+    ], open: ['s_open', '玩完之後，您最想用實驗弄清楚的一個問題是什麼？', '例如：補好晶格後，遠紅外線真的會變強嗎？'] }
+  ];
+  var REQUIRED = [], OPENS = [], LABELS = {}, NUMS = {};
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // 建立題目（編號 1–16）
+  var n = 0, html = '';
+  SECTIONS.forEach(function (sec) {
+    html += '<div class="sec"><span class="en">' + esc(sec.en) + '</span><h2>' + esc(sec.title) + '</h2><p>' + esc(sec.desc) + '</p></div>';
+    sec.items.forEach(function (it) {
+      n++; NUMS[it[0]] = n; REQUIRED.push(it[0]); LABELS[it[0]] = n + '. ' + it[1];
+      var opts = '';
+      if (sec.type === 'mc') {
+        opts = '<div class="mc">' + it[2].map(function (t, j) {
+          return '<label class="opt"><input type="radio" name="' + it[0] + '" value="' + LETTERS[j] + '"><span><b>' +
+            LETTERS[j] + '.</b>' + esc(t) + '</span></label>';
+        }).join('') + '</div>';
+      } else {
+        opts = '<div class="likert">' + SCALE.map(function (t, j) {
+          return '<label class="opt"><input type="radio" name="' + it[0] + '" value="' + (j + 1) + '" aria-label="' + t +
+            '"><span><b>' + (j + 1) + '</b><small>' + t + '</small></span></label>';
+        }).join('') + '</div>';
+      }
+      html += '<fieldset class="q" data-name="' + it[0] + '"><legend><span class="num">' + n + '.</span>' + esc(it[1]) +
+        '<span class="req">必填</span></legend>' + opts + '</fieldset>';
+    });
+    var o = sec.open;
+    n++; NUMS[o[0]] = n; OPENS.push(o[0]); LABELS[o[0]] = n + '. ' + o[1];
+    html += '<div class="q" data-name="' + o[0] + '"><label class="lab" for="' + o[0] + '"><span class="num">' + n + '.</span>' +
+      esc(o[1]) + '<span class="opt-tag">選填</span></label><textarea id="' + o[0] + '" maxlength="' + OPEN_MAX +
+      '" placeholder="' + esc(o[2]) + '"></textarea><div class="count"><span id="' + o[0] + '_n">0</span> / ' + OPEN_MAX + ' 字</div></div>';
+  });
+  $('qArea').innerHTML = html;
+
+  function val(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+
+  var form = $('fbForm');
+  form.addEventListener('change', function (e) {
+    var q = e.target.closest && e.target.closest('.q');
+    if (q) q.classList.remove('err');
+  });
+  form.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.tagName === 'TEXTAREA' && $(t.id + '_n')) $(t.id + '_n').textContent = t.value.length;
+    var q = t.closest && t.closest('.q');
+    if (q) q.classList.remove('err');
+  });
+
+  if (!ENDPOINT) $('setupNote').classList.add('show');
+  try { if (localStorage.getItem(DONE_KEY)) $('againNote').classList.add('show'); } catch (e) { /* 無痕模式等 */ }
+
+  function collect() {
+    var d = { schema: SCHEMA, submitted_at: taipeiISO(new Date()), event: EVENT };
+    SECTIONS.forEach(function (sec) {
+      sec.items.forEach(function (it) {
+        var v = val(it[0]);
+        d[it[0]] = sec.type === 'mc' ? v : (v ? parseInt(v, 10) : null);
+      });
+      d[sec.open[0]] = $(sec.open[0]).value.trim().slice(0, OPEN_MAX);
+    });
+    d.ua = (navigator.userAgent || '').slice(0, 120);
+    return d;
+  }
+
+  function taipeiISO(dt) {
+    var t = new Date(dt.getTime() + 8 * 3600 * 1000);
+    function p(x) { return (x < 10 ? '0' : '') + x; }
+    return t.getUTCFullYear() + '-' + p(t.getUTCMonth() + 1) + '-' + p(t.getUTCDate()) + 'T' +
+      p(t.getUTCHours()) + ':' + p(t.getUTCMinutes()) + ':' + p(t.getUTCSeconds()) + '+08:00';
+  }
+
+  function validate(d) {
+    var missing = REQUIRED.filter(function (k) { return !d[k]; });
+    document.querySelectorAll('.q').forEach(function (q) {
+      q.classList.toggle('err', missing.indexOf(q.dataset.name) >= 0);
+    });
+    return missing;
+  }
+
+  function showMsg(h) { var m = $('formMsg'); m.innerHTML = h; m.className = 'msg bad show'; }
+  function hideMsg() { $('formMsg').classList.remove('show'); }
+
+  function mailtoHref(d) {
+    var lines = ['墨玉護衛隊 遊戲回饋問卷（' + EVENT + '）', '送出時間：' + d.submitted_at, ''];
+    REQUIRED.concat(OPENS).sort(function (a, b) { return NUMS[a] - NUMS[b]; }).forEach(function (k) {
+      lines.push(LABELS[k] + '：' + (d[k] === null ? '' : d[k]));
+    });
+    lines.push('', '（以下為程式用資料，請勿修改）', JSON.stringify(d));
+    return 'mailto:' + MAILTO + '?subject=' + encodeURIComponent('墨玉護衛隊 回饋問卷 ' + EVENT) +
+      '&body=' + encodeURIComponent(lines.join('\n'));
+  }
+
+  function markDone() {
+    try { localStorage.setItem(DONE_KEY, new Date().toISOString()); } catch (e) { /* 忽略 */ }
+    form.style.display = 'none';
+    $('setupNote').classList.remove('show');
+    $('againNote').classList.remove('show');
+    $('doneBox').classList.add('show');
+    window.scrollTo(0, 0);
+    var pg = document.querySelector('.page'); if (pg) pg.scrollTop = 0;
+  }
+
+  var lastSubmit = 0;
+  var sending = false;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var now = Date.now();
+    if (sending || now - lastSubmit < 5000) return;   // 5 秒內只接受一次
+    lastSubmit = now;
+    hideMsg();
+
+    var d = collect();
+    var missing = validate(d);
+    if (missing.length) {
+      lastSubmit = 0;  // 驗證失敗不佔用 5 秒冷卻
+      showMsg('還有 ' + missing.length + ' 題必填題尚未作答（第 ' + missing.map(function (k) { return NUMS[k]; }).join('、') +
+        ' 題），已用紅框標示，請補填後再送出。');
+      var first = document.querySelector('.q.err'); if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if ($('website').value) { markDone(); return; }   // honeypot：機器人填了隱藏欄位，假裝成功
+
+    if (!ENDPOINT) {
+      var href = mailtoHref(d);
+      var m = $('formMsg');
+      m.className = 'msg info show';
+      m.innerHTML = '已為您開啟郵件 App，請在郵件中按「傳送」才算完成。若郵件 App 沒有出現，請<a href="' + href +
+        '">點這裡再開一次</a>，或把內容寄到 ' + MAILTO + '。';
+      try { localStorage.setItem(DONE_KEY, new Date().toISOString()); } catch (e2) { /* 忽略 */ }
+      window.location.href = href;
+      return;
+    }
+
+    sending = true;
+    var btn = $('submitBtn');
+    btn.disabled = true; btn.textContent = '送出中…';
+    fetch(ENDPOINT, { method: 'POST', body: JSON.stringify(d), headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok) throw new Error((res && res.error) || '伺服器未回應成功');
+        markDone();
+      })
+      .catch(function (err) {
+        showMsg('送出失敗（' + esc(err.message || err) + '）。請稍後再按一次「送出回饋」，或<a id="mailFallback" href="' +
+          mailtoHref(d) + '">改用 Email 寄出填答內容</a>。');
+        $('formMsg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      })
+      .then(function () { sending = false; btn.disabled = false; btn.textContent = '送出回饋'; });
+  });
+
+  $('againBtn').addEventListener('click', function () {
+    form.reset();
+    OPENS.forEach(function (k) { $(k + '_n').textContent = '0'; });
+    document.querySelectorAll('.q.err').forEach(function (q) { q.classList.remove('err'); });
+    $('doneBox').classList.remove('show');
+    form.style.display = '';
+    if (!ENDPOINT) $('setupNote').classList.add('show');
+    lastSubmit = 0;
+    window.scrollTo(0, 0);
+    var pg = document.querySelector('.page'); if (pg) pg.scrollTop = 0;
+  });
+})();
+</script>
+</body>
+</html>

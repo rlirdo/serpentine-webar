@@ -10,3 +10,8 @@ launcher/build/
 launcher/dist/
 *.exe
 *_selftest.log
+
+# hualien-harmony 測試暫存
+hualien-harmony/tools/out/
+hualien-harmony/tools/shots/*.png
+hualien-harmony/tools/_preview/
