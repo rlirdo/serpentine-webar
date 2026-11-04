@@ -15,3 +15,7 @@ launcher/dist/
 hualien-harmony/tools/out/
 hualien-harmony/tools/shots/*.png
 hualien-harmony/tools/_preview/
+
+# caviar（晶球護衛隊）測試暫存
+caviar/tools/shots/
+caviar/tools/out/
