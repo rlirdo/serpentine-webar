@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-11-05T07:47:45+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "k1": "B",
+  "k2": "C",
+  "k3": "A",
+  "k_open": "表面張力",
+  "a1": 5,
+  "a2": 5,
+  "a3": 5,
+  "a_open": "海帶也能成為科學材料",
+  "i1": 5,
+  "i2": 5,
+  "i3": 5,
+  "i_open": "自備水壺及餐具 減少一次性塑膠製品使用",
+  "s1": 5,
+  "s2": 5,
+  "s3": 5,
+  "s_open": "泡3分鐘比泡一分鐘還厚",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36"
+}
