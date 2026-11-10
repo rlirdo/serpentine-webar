@@ -1,0 +1,89 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-10T18:10:04+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "pflja2x213fe",
+  "sid": "60ibr8vofnp9",
+  "phase": "post",
+  "grade": "junior",
+  "mode": "drive",
+  "client_time": "2026-11-10T10:10:03.425Z",
+  "age": 50,
+  "gender": "女",
+  "org": "自由參加",
+  "hero": "adult_f",
+  "pre": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J10",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J5",
+      "facet": "知識",
+      "pick": 2,
+      "correct": false
+    }
+  ],
+  "preScore": 2,
+  "postSame3": 3,
+  "postScore": 4,
+  "stars": [
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    3,
+    2
+  ],
+  "totalStars": 8,
+  "facets": {
+    "知識": 50,
+    "態度": 100,
+    "行動": 100,
+    "探究": 83
+  },
+  "commit": "實驗廢液分類處理，不亂倒",
+  "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15"
+}
