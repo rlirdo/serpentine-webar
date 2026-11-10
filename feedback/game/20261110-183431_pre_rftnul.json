@@ -1,0 +1,44 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-10T18:34:31+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "zc5dhzqzweex",
+  "sid": "4znsgebfjhua",
+  "phase": "pre",
+  "grade": "junior",
+  "mode": "drive",
+  "client_time": "2026-11-10T10:34:30.416Z",
+  "age": 20,
+  "gender": "男",
+  "org": "",
+  "hero": "adult_m",
+  "pre": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [],
+  "preScore": 2,
+  "postSame3": "",
+  "postScore": "",
+  "stars": [],
+  "totalStars": "",
+  "facets": {},
+  "commit": "",
+  "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMesse"
+}
