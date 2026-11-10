@@ -1,0 +1,89 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-10T18:38:50+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "zc5dhzqzweex",
+  "sid": "4znsgebfjhua",
+  "phase": "post",
+  "grade": "junior",
+  "mode": "drive",
+  "client_time": "2026-11-10T10:38:49.155Z",
+  "age": 20,
+  "gender": "男",
+  "org": "",
+  "hero": "adult_m",
+  "pre": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J7",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J4",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "preScore": 2,
+  "postSame3": 3,
+  "postScore": 5,
+  "stars": [
+    3,
+    3,
+    2,
+    3,
+    2,
+    3,
+    2,
+    3
+  ],
+  "totalStars": 21,
+  "facets": {
+    "知識": 100,
+    "態度": 100,
+    "行動": 100,
+    "探究": 100
+  },
+  "commit": "減少使用一次性塑膠包裝",
+  "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 27_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMesse"
+}
