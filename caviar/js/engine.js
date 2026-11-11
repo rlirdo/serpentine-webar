@@ -153,7 +153,7 @@ export function createEngine({ canvas, sprites, onEvent = () => {} }) {
     return [L.hero.x + 60, L.hero.y];
   }
   function spawnGood(type, bonus = false) {
-    const [x, y] = bonus ? freeSpot(80, 280) : freeSpot(60, 190);
+    const [x, y] = bonus ? freeSpot(100, 300) : freeSpot(85, 225); // 2.0.2：圓盤＋箭頭讓操控變容易，收集物出現距離拉遠一些，避免關卡幾秒就結束
     L.goods.push({ type, x, y, r: 9, bonus, pull: false, locked: !bonus && !!L.cfg.locked, stir: 0, born: t, ph: rand() * TAU });
   }
   function neededTypes() {
