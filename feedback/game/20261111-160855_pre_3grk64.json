@@ -1,0 +1,44 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-11T16:08:55+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "x2o5lj5t1v1t",
+  "sid": "hqm9952ufr64",
+  "phase": "pre",
+  "grade": "junior",
+  "mode": "drive",
+  "client_time": "2026-11-11T08:08:53.884Z",
+  "age": 10,
+  "gender": "女",
+  "org": "國小學生｜Claude測試",
+  "hero": "kid_f",
+  "pre": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [],
+  "preScore": 3,
+  "postSame3": "",
+  "postScore": "",
+  "stars": [],
+  "totalStars": "",
+  "facets": {},
+  "commit": "",
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36"
+}
