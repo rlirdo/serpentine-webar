@@ -186,7 +186,7 @@ function updatePointer() {
   if (!tg) return;
   el.classList.toggle("rescue", tg.kind === "rescue");
   const a = Math.atan2(tg.dy, tg.dx);
-  if (Math.abs(a - ptrAngle) > 0.01) { ptrAngle = a; $("ptrArrow").style.transform = `rotate(${a.toFixed(3)}rad)`; }
+  if (!(Math.abs(a - ptrAngle) <= 0.01)) { ptrAngle = a; $("ptrArrow").style.transform = `rotate(${a.toFixed(3)}rad)`; }
   if (tg.sprite !== ptrSprite) {
     ptrSprite = tg.sprite;
     const box = $("ptrIcon");
@@ -743,7 +743,8 @@ if (AUTOPLAY) {
         const toastEl = document.querySelector("#toast.show");
         return { visible: true, inView: inViewRect(r), rect: rectOf(pt), overSys: overlap(r, sysR), overHud: overlap(r, document.querySelector(".hud-top").getBoundingClientRect()),
           overToast: toastEl ? overlap(r, toastEl.getBoundingClientRect()) : false, overPad: vis(p) ? overlap(r, p.getBoundingClientRect()) : false,
-          hasIcon: !!$("ptrIcon").querySelector("canvas"), angle: ptrAngle };
+          hasIcon: !!$("ptrIcon").querySelector("canvas"), angle: ptrAngle, css: $("ptrArrow").style.transform,
+          want: (() => { const tg = engine.pointerTarget(); return tg ? Math.atan2(tg.dy, tg.dx) : null; })() };
       })() : { visible: false };
       const sb = $("scoreBoard");
       out.score = vis(sb) && !$("hud").classList.contains("hidden") ? (() => {

@@ -182,8 +182,8 @@ def main():
               "CONTROL_HELP", "LEGEND", "LEVELS", "MATES", "SAFETY", "ENDING", "FACETS", "FACET_NAMES", "BANK"):
         if k not in ex:
             errs.append(f"缺少匯出 {k}")
-    if ex.get("VERSION") != "2.0.0":
-        errs.append(f"VERSION 應為 2.0.0，實際 {ex.get('VERSION')!r}")
+    if not str(ex.get("VERSION") or "").startswith("2.0."):
+        errs.append(f"VERSION 應為 2.0.x，實際 {ex.get('VERSION')!r}")
     if ex.get("GRADE_LABEL") != {"elem": "初階", "junior": "中階", "senior": "高階"}:
         errs.append("GRADE_LABEL 與契約不符")
     if ex.get("GRADE_DESC") != {"elem": "國小程度", "junior": "國中・高中程度", "senior": "大學・研究所程度"}:

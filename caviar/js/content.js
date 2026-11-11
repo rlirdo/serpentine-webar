@@ -6,7 +6,7 @@
 // BANK 由 tools/check_bank.py 檢查結構，並匯出 tools/out/bank_v2.json 供撈取工具更新題庫。
 
 export const CREDIT = "NDHU自資系游豐兆製作";
-export const VERSION = "2.0.0";
+export const VERSION = "2.0.1";
 export const TITLE = "晶球護衛隊：幻彩人工魚子醬大冒險";
 export const TITLE_EN = "Caviar Bead Squad";
 export const STORE_KEY = "caviarSquad.records.v1";

@@ -20,6 +20,8 @@
   前測 3 題／後測 5 題／stars 8 個、題號 E1–E10／J1–J10。結果寫入 tools/out/autoplay_<視窗>.json。
 """
 import functools
+import math
+import re
 import json
 import sys
 import time
@@ -244,9 +246,19 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
     hit_bad = [x for x in hits if not x[2] or not x[3]]
     play_recs = [r for r in records if r["label"].endswith("-play") and r.get("still_playing")]
     pad_bad = [r["label"] for r in play_recs if not (r["check"]["pad"]["visible"] and r["check"]["pad"]["inView"])]
+    def _ptr_dir_ok(pt):
+        # 箭頭的 CSS 旋轉角必須等於「主角→最近目標」的方向（2.0.1：曾因初值 NaN 而永遠朝右）
+        want = pt.get("want")
+        if want is None:
+            return True
+        m = re.search(r"rotate\((-?[0-9.]+)rad\)", pt.get("css") or "")
+        if not m:
+            return False
+        d = abs(float(m.group(1)) - want) % (2 * math.pi)
+        return min(d, 2 * math.pi - d) < 0.35
     pointer_bad = [(r["label"], r["check"]["pointer"]) for r in play_recs
                    if not (r["check"]["pointer"]["visible"] and r["check"]["pointer"]["inView"] and not r["check"]["pointer"]["overSys"]
-                           and not r["check"]["pointer"]["overPad"] and r["check"]["pointer"]["hasIcon"])]
+                           and not r["check"]["pointer"]["overPad"] and r["check"]["pointer"]["hasIcon"] and _ptr_dir_ok(r["check"]["pointer"]))]
     score_bad = [(r["label"], r["check"]["score"]) for r in play_recs
                  if not (r["check"]["score"]["visible"] and r["check"]["score"]["inView"] and r["check"]["score"]["left"]
                          and not r["check"]["score"]["overSys"] and "累積" in r["check"]["score"]["text"]
