@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
-"""晶球護衛隊自動通關測試：index.html?autoplay=1 走完
-開場 → 玩家資料 → 主角 → 前測 → 八關（駕駛）→ 後測 → 行動承諾 → 結果。
+"""晶球護衛隊自動通關測試（2.0）：index.html?autoplay=1&tier=… 走完
+開場 → 玩家資料（含身分）→ 主角與程度 → 圖例 → 前測 → 八關（白色圓盤駕駛）→ 後測 → 行動承諾 → 結果。
 
-用法：PYTHONUTF8=1 python tools/autoplay_test.py [mobile|desktop|landscape|ipad|all] [--base URL] [--tag 名稱] [--audible] [--no-atlas]
+用法：PYTHONUTF8=1 python tools/autoplay_test.py [mobile|desktop|landscape|ipad|all] [--tier elem|junior|senior|all]
+      [--base URL] [--tag 名稱] [--audible] [--no-atlas]
+- 程度：mobile 預設三個程度各跑一次；其他視窗預設 elem；--tier 可覆寫。
+- 第 1 關駕駛中做「真實觸控測試」：暫停自動駕駛，以 CDP Input.dispatchTouchEvent（桌機用 dispatchMouseEvent）
+  按住圓盤上方／右方、放開、滑出圓盤外再滑回，量測主角位置。
+- 另檢查：圓盤可見且在視窗內、右上目標指標可見（不壓系統鈕）、左上分數表存在且每關過關後累積分數增加、
+  題號符合程度、上傳紀錄 grade／event／題號轉換（高階 → grade junior、event …-SR、S→J）與欄位順序。
 - --no-atlas：擋掉 assets/sprites.json，驗證圖集缺席時以純色占位跑完全程（該 404／blocked 列為預期）。
 - 不指定 --base 時自動起本機 tools/devserver.py（網站根目錄＝caviar/）。
 - all＝手機直向 390×844（觸控模擬）、桌機 1280×720、手機橫向 844×390 各一輪；ipad＝820×1180（觸控）加測截圖。
 - 每個等待輸入的畫面截圖到 tools/shots/<視窗>_<序號>_<畫面>.png；每關駕駛中再截一張。
-- 每個畫面呼叫 __ap.check()（右下製作者字樣存在／在視窗內／z-index 最高／不與按鈕重疊、文字不出界、方向盤可見）
+- 每個畫面呼叫 __ap.check()（右下製作者字樣存在／在視窗內／z-index 最高／不與按鈕重疊、文字不出界、觸控盤可見）
   與 __ap.speechCheck()（畫面文字都有對應 speak()）。
 - 收集 console error／未捕捉例外；檢查 __audio.log 非空、__speech.log 非空；每關駕駛需在 25 秒內完成。
 - 上傳紀錄（autoplay 不真的上傳）檢查 schema webar-game-v2 欄位順序、event＝HL-STATION-2026-1127-CAVIAR、
@@ -30,16 +36,92 @@ SHOTS = ROOT / "tools" / "shots"
 OUT = ROOT / "tools" / "out"
 VIEWPORTS = {"mobile": (390, 844, True), "desktop": (1280, 720, False), "landscape": (844, 390, True), "ipad": (820, 1180, True)}
 EVENT = "HL-STATION-2026-1127-CAVIAR"
+EVENT_SR = EVENT + "-SR"
+TIERS = ["elem", "junior", "senior"]
+TIER_PREFIX = {"elem": "E", "junior": "J", "senior": "S"}
+AP_FILL = {"elem": ("國小學生", "測試國小"), "junior": ("高中職學生", "測試高中"), "senior": ("大學生", "東華大學")}
 FIELDS_V2 = ["schema", "submitted_at", "event", "pid", "sid", "phase", "grade", "mode", "client_time", "age", "gender", "org",
              "hero", "pre", "post", "preScore", "postSame3", "postScore", "stars", "totalStars", "facets", "commit", "ua"]
 LEVEL_LIMIT = 25.0
 
 
-def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=False, no_atlas=False):
+def touch_test(ch, mobile):
+    """真實觸控：暫停自動駕駛後，以 CDP 觸控（桌機用滑鼠）操作白色圓盤，量測主角位置。"""
+    def down(x, y):
+        if mobile:
+            ch.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y, "id": 1}]})
+        else:
+            ch.send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
+            ch.send("Input.dispatchMouseEvent", {"type": "mousePressed", "x": x, "y": y, "button": "left", "buttons": 1, "clickCount": 1})
+
+    def move(x, y):
+        if mobile:
+            ch.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": y, "id": 1}]})
+        else:
+            ch.send("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y, "button": "left", "buttons": 1})
+
+    def up(x, y):
+        if mobile:
+            ch.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        else:
+            ch.send("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x, "y": y, "button": "left", "buttons": 0, "clickCount": 1})
+
+    def pos():
+        return ch.eval("__ap.heroPos()")
+
+    def dist(a, b):
+        return ((a["x"] - b["x"]) ** 2 + (a["y"] - b["y"]) ** 2) ** 0.5
+
+    t0 = time.time()
+    res = {}
+    try:
+        ch.eval("__ap.manual(true)")
+        time.sleep(0.4)
+        pr = ch.eval("__ap.padRect()")
+        cx, cy, R = pr["x"], pr["y"], pr["r"]
+        res["pad"] = pr
+        a = pos(); time.sleep(0.35); b = pos()
+        res["idle_still"] = dist(a, b) < 1 and not b["active"]
+        # 1) 按住上方 0.6 秒 → y 變小；放開後 0.4 秒內不再動
+        ch.eval("__ap.manual(true)"); time.sleep(0.15)
+        p0 = pos(); down(cx, cy - R * 0.7); time.sleep(0.6); p1 = pos(); up(cx, cy - R * 0.7)
+        time.sleep(0.08); p2 = pos(); time.sleep(0.4); p3 = pos()
+        res["up_dy"] = round(p1["y"] - p0["y"], 1)
+        res["up_ok"] = p1["y"] < p0["y"] - 20 and abs(p1["x"] - p0["x"]) < 12 and p1["active"]
+        res["release_moved"] = round(dist(p2, p3), 2)
+        res["release_ok"] = dist(p2, p3) < 1.5 and not p3["active"]
+        # 2) 按住右方 → x 變大
+        ch.eval("__ap.manual(true)"); time.sleep(0.15)
+        q0 = pos(); down(cx + R * 0.7, cy); time.sleep(0.6); q1 = pos(); up(cx + R * 0.7, cy)
+        res["right_dx"] = round(q1["x"] - q0["x"], 1)
+        res["right_ok"] = q1["x"] > q0["x"] + 20 and abs(q1["y"] - q0["y"]) < 12
+        # 3) 按住後滑出圓盤外 → 停止；再滑回圓盤內 → 繼續移動
+        ch.eval("__ap.manual(true)"); time.sleep(0.15)
+        down(cx, cy - R * 0.6); time.sleep(0.25)
+        move(cx, cy - R * 1.45); time.sleep(0.08); s0 = pos(); time.sleep(0.4); s1 = pos()
+        res["slide_out_moved"] = round(dist(s0, s1), 2)
+        res["slide_out_ok"] = dist(s0, s1) < 1.5 and not s1["active"]
+        move(cx - R * 0.6, cy); time.sleep(0.08); r0 = pos(); time.sleep(0.4); r1 = pos()
+        up(cx - R * 0.6, cy)
+        res["slide_back_dx"] = round(r1["x"] - r0["x"], 1)
+        res["slide_back_ok"] = r1["x"] < r0["x"] - 15
+        # 4) 圓心死區不動
+        ch.eval("__ap.manual(true)"); time.sleep(0.15)
+        d0 = pos(); down(cx + 2, cy + 2); time.sleep(0.35); d1 = pos(); up(cx + 2, cy + 2)
+        res["deadzone_ok"] = dist(d0, d1) < 1.5
+    finally:
+        ch.eval("__ap.manual(false)")
+    res["seconds"] = round(time.time() - t0, 2)
+    res["ok"] = all(res.get(k) for k in ("idle_still", "up_ok", "release_ok", "right_ok", "slide_out_ok", "slide_back_ok", "deadzone_ok"))
+    return res
+
+
+def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=False, no_atlas=False, tier="elem"):
     w, h, mobile = VIEWPORTS[name]
     base = (base or f"http://127.0.0.1:{port}/").rstrip("/") + "/"
     base_host = urlparse(base).netloc
-    label = f"{tag}{name}"
+    label = f"{tag}{name}_{tier}"
+    touch = None
     SHOTS.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
     for old in SHOTS.glob(f"{label}_*.png"):
@@ -57,7 +139,7 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
             ch.send("Network.setBlockedURLs", {"urls": ["*assets/sprites.json*"]})
         if not audible:
             ch.send("Page.addScriptToEvaluateOnNewDocument", {"source": "window.__speechTestVolume = 0;"})
-        ch.send("Page.navigate", {"url": f"{base}index.html?autoplay=1"})
+        ch.send("Page.navigate", {"url": f"{base}index.html?autoplay=1&tier={tier}"})
         for _ in range(300):
             try:
                 if ch.eval("!!(window.__ap && window.__ap.ready)"):
@@ -92,6 +174,9 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
                 records.append({"n": n, "label": lv, "shot": f"tools/shots/{fn}", "check": chk, "speech": ch.eval("__ap.speechCheck()"), "hud": info.get("hud"),
                                 "still_playing": info.get("playing")})
                 play_shots.append(fn)
+                if lv == "L1-play" and touch is None:
+                    touch = touch_test(ch, mobile)
+                    print(f"[{label}] 真實觸控測試={touch}")
                 if lv in ("L1-play", "L5-play"):
                     hz = ch.eval("__ap.forceHit()")
                     time.sleep(0.35)
@@ -142,6 +227,8 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
         speech = ch.eval("""(() => { const s = window.__speech; if (!s) return null;
           return { state: s.state(), n: s.log.length, residue: s.log.map((e) => [e.src.slice(0, 30), s.residue(e.pre)]).filter((x) => x[1].length) }; })()""")
         sent = ch.eval("__ap.reporter()")
+        info = ch.eval("__ap.info()")
+        s_final = ch.eval("__ap.S()")
         sprite_src = ch.eval("__ap.state().sprites")
         fps = ch.eval("__ap.fps")
     finally:
@@ -155,22 +242,49 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
     overflow = [r for r in records if r["check"]["overflow"]]
     hits = [(r["label"], r.get("forced"), (r.get("hud") or {}).get("hits"), r.get("toast")) for r in records if r["label"].endswith("-hit")]
     hit_bad = [x for x in hits if not x[2] or not x[3]]
-    wheel_bad = [r["label"] for r in records if r["label"].endswith("-play") and r.get("still_playing") and not (r["check"]["wheel"]["visible"] and r["check"]["wheel"]["inView"])]
-    slow_levels = [lt for lt in level_times if lt["seconds"] > LEVEL_LIMIT]
+    play_recs = [r for r in records if r["label"].endswith("-play") and r.get("still_playing")]
+    pad_bad = [r["label"] for r in play_recs if not (r["check"]["pad"]["visible"] and r["check"]["pad"]["inView"])]
+    pointer_bad = [(r["label"], r["check"]["pointer"]) for r in play_recs
+                   if not (r["check"]["pointer"]["visible"] and r["check"]["pointer"]["inView"] and not r["check"]["pointer"]["overSys"]
+                           and not r["check"]["pointer"]["overPad"] and r["check"]["pointer"]["hasIcon"])]
+    score_bad = [(r["label"], r["check"]["score"]) for r in play_recs
+                 if not (r["check"]["score"]["visible"] and r["check"]["score"]["inView"] and r["check"]["score"]["left"]
+                         and not r["check"]["score"]["overSys"] and "累積" in r["check"]["score"]["text"]
+                         and f"第 {r['label'][1]} 關" in r["check"]["score"]["text"])]
+    score_inc_bad = [lt for lt in level_times if not (lt.get("total", 0) > lt.get("before", 0) and lt.get("score", 0) > 0)]
+    touch_secs = (touch or {}).get("seconds", 0)
+    slow_levels = [lt for lt in level_times if lt["seconds"] - (touch_secs if lt["level"] == 1 else 0) > LEVEL_LIMIT]
     speech_missing = [(r["n"], r["label"], r["speech"]["missing"]) for r in records if r["speech"]["missing"]]
     order_ok = all(list(rec.keys()) == FIELDS_V2 for rec in sent) and len(sent) == 2
     import re as _re
     idre = _re.compile(r"^[EJ](10|[1-9])$")
     post_rec = next((r for r in sent if r.get("phase") == "post"), {})
     pre_rec = next((r for r in sent if r.get("phase") == "pre"), {})
+    exp_event = EVENT_SR if tier == "senior" else EVENT
+    exp_grade = "elem" if tier == "elem" else "junior"
+    bank_tier = tier if (tier != "senior" or info.get("hasSenior")) else "junior"  # 代理 A 未完成高階題庫時的後備
+    exp_prefix = TIER_PREFIX[bank_tier]
+    role, org = AP_FILL[tier]
+    raw_ids = [a["id"] for a in s_final.get("pre", []) + s_final.get("post", [])]
+    _map = lambda i: "J" + i[1:] if i.startswith("S") else i  # noqa: E731
     payload = {
-        "event_ok": all(r.get("event") == EVENT for r in sent),
+        "tier": tier, "grade_state": s_final.get("grade"), "bank_tier": bank_tier, "pending_A": bank_tier != tier,
+        "grade_state_ok": s_final.get("grade") == tier,
+        "raw_ids": raw_ids, "raw_ids_ok": bool(raw_ids) and all(i.startswith(exp_prefix) for i in raw_ids),
+        "upload_grade_ok": all(r.get("grade") == exp_grade for r in sent),
+        "upload_ids_ok": bool(sent) and all([a["id"] for a in r.get("pre", [])] == [_map(a["id"]) for a in s_final.get("pre", [])]
+                                            and (r.get("phase") != "post" or [a["id"] for a in r.get("post", [])] == [_map(a["id"]) for a in s_final.get("post", [])])
+                                            for r in sent),
+        "org_ok": all(r.get("org") == f"{role}｜{org}" for r in sent),
+        "event": sorted({r.get("event") for r in sent}),
+        "event_ok": all(r.get("event") == exp_event for r in sent),
         "schema_ok": all(r.get("schema") == "webar-game-v2" and r.get("mode") == "drive" and r.get("grade") in ("elem", "junior") for r in sent),
         "pre_n": len(pre_rec.get("pre", [])), "post_n": len(post_rec.get("post", [])), "stars_n": len(post_rec.get("stars", [])),
         "ids_ok": all(idre.match(a["id"]) for r in sent for a in r.get("pre", []) + r.get("post", [])),
         "facets": sorted((post_rec.get("facets") or {}).keys()),
     }
     payload["ok"] = (payload["event_ok"] and payload["schema_ok"] and payload["pre_n"] == 3 and payload["post_n"] == 5
+                     and payload["grade_state_ok"] and payload["raw_ids_ok"] and payload["upload_grade_ok"] and payload["org_ok"] and payload["upload_ids_ok"]
                      and payload["stars_n"] == 8 and payload["ids_ok"] and payload["facets"] == sorted(["知識", "態度", "行動", "探究"]))
     external = [u for u in req_urls if urlparse(u).scheme in ("http", "https", "ws", "wss") and urlparse(u).netloc != base_host]
     result = {
@@ -180,18 +294,24 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
         "console_errors": real_errors, "expected_atlas_404": expected_404, "ap_errors": ap_errors,
         "credit_problems": [(r["n"], r["label"], r["check"]) for r in bad_credit],
         "overflow_problems": [(r["n"], r["label"], r["check"]["overflow"]) for r in overflow],
-        "wheel_problems": wheel_bad, "forced_hits": hits, "hit_problems": hit_bad, "audio": audio, "speech": speech, "speech_missing": speech_missing,
+        "info": info, "touch_test": touch, "pad_problems": pad_bad, "pointer_problems": pointer_bad,
+        "score_problems": score_bad, "score_increase_problems": score_inc_bad, "final_score": s_final.get("score"), "forced_hits": hits, "hit_problems": hit_bad, "audio": audio, "speech": speech, "speech_missing": speech_missing,
         "upload_records": sent, "upload_field_order_ok": order_ok, "upload_payload": payload, "external_requests": external,
         "play_shots": play_shots, "records": records,
     }
     (OUT / f"autoplay_{label}.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"[{label}] 結果頁={result['reached_result']} 畫面={len(records)} 秒數={elapsed} 圖集={sprite_src} fps={fps}")
-    print(f"[{label}] 每關秒數=" + ", ".join(f"L{lt['level']}:{lt['seconds']}s/{lt['stars']}★" for lt in level_times))
+    print(f"[{label}] 每關秒數=" + ", ".join(f"L{lt['level']}:{lt['seconds']}s/{lt['stars']}★/+{lt.get('score')}" for lt in level_times)
+          + f"（觸控測試 {touch_secs}s 含在 L1）總分={s_final.get('score')}")
+    print(f"[{label}] info={ {k: v for k, v in info.items() if k != 'bankIds'} }")
+    print(f"[{label}] pad={len(pad_bad)} pointer={len(pointer_bad)} score={len(score_bad)} score_inc={len(score_inc_bad)} touch_ok={(touch or {}).get('ok')}")
     print(f"[{label}] console_errors={len(real_errors)}（預期圖集 404={len(expected_404)}） ap_errors={len(ap_errors)} "
-          f"credit={len(bad_credit)} overflow={len(overflow)} wheel={len(wheel_bad)} slow={len(slow_levels)}")
+          f"credit={len(bad_credit)} overflow={len(overflow)} slow={len(slow_levels)}")
     print(f"[{label}] audio n={audio['n']} state={audio['state']} names={audio['names']}")
     print(f"[{label}] speech n={(speech or {}).get('n')} missing={len(speech_missing)} residue={len((speech or {}).get('residue', []))} "
           f"上傳欄位順序={order_ok} 外部請求={len(external)}")
+    for r in ((speech or {}).get("residue", []))[:12]:
+        print("  語音殘留", r)
     print(f"[{label}] 上傳內容檢查={payload}")
     print(f"[{label}] 強制撞擊={hits}")
     for e in (real_errors + ap_errors)[:10]:
@@ -202,8 +322,13 @@ def run(name, port=8777, settle=0.45, max_steps=300, base=None, tag="", audible=
         print("  OVERFLOW", r["n"], r["label"], r["check"]["overflow"][:3])
     for m in speech_missing[:10]:
         print("  SPEECH-MISSING", m)
+    for x in pointer_bad[:5]:
+        print("  POINTER", x)
+    for x in score_bad[:5]:
+        print("  SCORE", x)
     result["ok"] = bool(result["reached_result"] and not real_errors and not ap_errors and not bad_credit and not overflow
-                        and not wheel_bad and not hit_bad and not slow_levels and audio["n"] > 0 and speech and speech["n"] > 0
+                        and not pad_bad and not pointer_bad and not score_bad and not score_inc_bad and bool(touch and touch["ok"])
+                        and not hit_bad and not slow_levels and audio["n"] > 0 and speech and speech["n"] > 0
                         and not speech_missing and order_ok and payload["ok"] and not external)
     print(f"[{label}] {'通過' if result['ok'] else '未通過'}")
     return result
@@ -216,6 +341,9 @@ def main():
         i = args.index("--base"); base = args[i + 1]; del args[i:i + 2]
     if "--tag" in args:
         i = args.index("--tag"); tag = args[i + 1]; del args[i:i + 2]
+    tier_arg = None
+    if "--tier" in args:
+        i = args.index("--tier"); tier_arg = args[i + 1]; del args[i:i + 2]
     audible = "--audible" in args
     if audible:
         args.remove("--audible")
@@ -226,7 +354,12 @@ def main():
     srv = None if base else devserver.start(8777)
     try:
         names = ["mobile", "desktop", "landscape"] if which == "all" else [which]
-        res = [run(n, base=base, tag=(tag + "_") if tag else "", audible=audible, no_atlas=no_atlas) for n in names]
+        res = []
+        for n in names:
+            tiers = TIERS if tier_arg == "all" else [tier_arg] if tier_arg else (TIERS if n == "mobile" else ["elem"])
+            for t in tiers:
+                res.append(run(n, base=base, tag=(tag + "_") if tag else "", audible=audible, no_atlas=no_atlas, tier=t))
+        print("總結：" + "、".join(f"{r['viewport']}/{r['upload_payload']['tier']}={'通過' if r['ok'] else '未通過'}" for r in res))
     finally:
         if srv:
             srv.shutdown()

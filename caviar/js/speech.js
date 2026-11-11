@@ -25,6 +25,17 @@ const RULES = [
   [/膜厚\s*δ\s*∝\s*√\s*t/g, "膜厚和時間的開根號成正比"],
   [/δ\s*∝\s*√\s*t/g, "膜厚和時間的開根號成正比"],
   [/√\s*t/g, "時間的開根號"],
+  // 高階文字（2.0）：希臘字母、鍵結位置、濃度單位、等號
+  [/β\s*-\s*D\s*-\s*/g, "貝塔 D "],
+  [/α\s*-\s*L\s*-\s*/g, "阿法 L "],
+  [/1\s*→\s*4\s*鍵結/g, "一四鍵結"],
+  [/\bMG\s*交替/g, "M G 交替"],
+  [/G\s*\/\s*M\s*比例/g, "G 與 M 的比例"],
+  [/mol\s*\/\s*L/g, "莫耳每公升"],
+  [/2\s*δ/g, "兩倍膜厚"],
+  [/膜厚\s*δ/g, "膜厚"],
+  [/δ/g, "膜厚"],
+  [/(\d)\s*=\s*(\d)/g, "$1 等於 $2"],
   [/Grant\s+et\s+al\.?\s*,?\s*(\d{4})/g, "Grant 等人，$1 年"],
   [/Grant\s+et\s+al\.?/g, "Grant 等人"],
   [/(\d)\s*µmol/g, "$1 微莫耳"],
@@ -393,7 +404,7 @@ export function createSpeech() {
     cancel,
     unlock,
     pickVoice,
-    setGrade(g) { rate = g === "junior" ? 1.05 : 0.95; },
+    setGrade(g) { rate = g === "elem" ? 0.95 : 1.05; }, // 初階放慢；中階、高階正常偏快
     setEnabled(on) {
       enabled = !!on;
       try { localStorage.setItem(KEY, enabled ? "1" : "0"); } catch (e) { /* ignore */ }

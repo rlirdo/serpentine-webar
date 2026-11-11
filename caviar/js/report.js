@@ -4,6 +4,15 @@
 const PID_KEY = "caviarSquad.pid";
 const SCHEMA = "webar-game-v2";
 const EVENT = "HL-STATION-2026-1127-CAVIAR"; // 同日同站墨玉護衛隊為 HL-STATION-2026-1127，以後綴區分
+const EVENT_SR = EVENT + "-SR"; // 高階（中繼只收 elem／junior，高階以 event 後綴區分）
+// 上傳相容：中繼只接受 grade elem／junior、題號 /^[EJ](10|[1-9])$/
+export function uploadGrade(tier) { return tier === "elem" ? "elem" : "junior"; }
+export function uploadEvent(tier) { return tier === "senior" ? EVENT_SR : EVENT; }
+export function uploadId(id) { return String(id || "").replace(/^S/, "J"); }
+export function uploadOrg(role, org) {
+  const r = String(role || "").trim(), o = String(org || "").trim();
+  return (r ? `${r}｜${o}` : o).slice(0, 60); // 有身分時一律帶分隔號（單位空白也帶），撈取工具才能拆欄
+}
 export const GENDER_SET = ["男", "女", "其他", "不透露"];
 
 function rand(n) {
@@ -37,18 +46,18 @@ export function createReporter({ enabled = true } = {}) {
   const sent = [];
 
   function build(phase, S, R) {
-    const ans = (arr) => (arr || []).map((r) => ({ id: r.id, facet: r.facet, pick: r.pick, correct: !!r.correct }));
+    const ans = (arr) => (arr || []).map((r) => ({ id: uploadId(r.id), facet: r.facet, pick: r.pick, correct: !!r.correct }));
     const post = phase === "post";
     return {
       schema: SCHEMA,
       submitted_at: "",
-      event: EVENT,
+      event: uploadEvent(S.grade),
       pid, sid, phase,
-      grade: S.grade, mode: "drive",
+      grade: uploadGrade(S.grade), mode: "drive",
       client_time: new Date().toISOString(),
       age: cleanAge(S.age),
       gender: GENDER_SET.includes(S.gender) ? S.gender : "不透露",
-      org: String(S.org || "").slice(0, 60),
+      org: uploadOrg(S.role, S.org),
       hero: String(S.hero || "").slice(0, 20),
       pre: ans(S.pre),
       post: post ? ans(S.post) : [],

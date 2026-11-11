@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#3A0B2E">
 <title>晶球護衛隊：幻彩人工魚子醬大冒險｜像素科學遊戲</title>
-<meta name="description" content="握住方向盤，跟海藻小藻一起從七星潭採褐藻、配紅液與藍色鈣液、滴出會爆汁的幻彩人工魚子醬，認識蛋盒交聯與表面張力，救出八位夥伴的像素科學遊戲（晶球不可食用）。">
+<meta name="description" content="按住白色圓形觸控盤，跟海藻小藻一起從七星潭採褐藻、配紅液與藍色鈣液、滴出會爆汁的幻彩人工魚子醬，認識蛋盒交聯與表面張力，救出八位夥伴的像素科學遊戲（晶球不可食用）。">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -15,24 +15,33 @@
 <div id="hud" class="hidden" aria-live="polite">
   <div class="hud-top">
     <div class="hud-row">
-      <div id="team" class="team" aria-label="隊伍"></div>
-      <div id="starsTotal" class="stars-total">★ 0</div>
+      <div id="scoreBoard" class="score-board" aria-label="分數表">第 1 關　累積 0 分</div>
     </div>
     <div class="hud-row">
-      <div id="lvlChip" class="lvl-chip">第 1 關／七星潭採褐藻</div>
+      <div id="lvlChip" class="lvl-chip">七星潭採褐藻</div>
       <div id="hearts" class="hearts" aria-label="本關星數"></div>
+      <div id="starsTotal" class="stars-total">★ 0</div>
     </div>
     <div class="goal"><i id="goalFill"></i><span id="goalText" class="goal-text"></span></div>
     <div id="lattice" class="lattice hidden"></div>
-    <div id="levels" class="levels"></div>
+    <div class="hud-row team-row">
+      <div id="team" class="team" aria-label="隊伍"></div>
+      <div id="levels" class="levels"></div>
+    </div>
+  </div>
+  <div id="pointer" class="pointer hidden" aria-label="目標方向指標">
+    <div class="ptr-dial"><i id="ptrArrow" class="ptr-arrow"></i></div>
+    <div class="ptr-label"><span id="ptrIcon" class="ptr-icon"></span><span class="ptr-text">目標</span></div>
   </div>
   <div id="toast" class="toast"></div>
 </div>
 
 <div id="controls" class="hidden">
   <button id="harmonyBtn" class="ctl harmony" type="button" disabled>和聲<br>共振</button>
-  <canvas id="wheel" aria-label="方向盤：按住拖曳旋轉"></canvas>
-  <button id="brakeBtn" class="ctl brake" type="button">煞車</button>
+  <div id="pad" class="pad" aria-label="白色圓形觸控盤：按住圓盤上下左右移動，手指離開就停下">
+    <span class="pad-mark up">▲</span><span class="pad-mark down">▼</span><span class="pad-mark left">◀</span><span class="pad-mark right">▶</span>
+    <i id="padKnob" class="pad-knob"></i>
+  </div>
 </div>
 
 <div id="screen" class="screen hidden"><div id="panel" class="panel"></div></div>

@@ -36,6 +36,17 @@ export function gradeFor(age, org) {
   if (age !== "" && age != null && Number.isFinite(a)) return a <= 12 ? "elem" : "junior";
   return String(org || "").includes("國小") ? "elem" : "junior";
 }
+// 程度：國小學生→elem；國中學生、高中職學生→junior；大學生、研究生、教師→senior；
+// 一般民眾（或未選）→ 年齡 ≤12 elem、13–18 junior、≥19 junior
+export function tierFor(age, role) {
+  const r = String(role || "");
+  if (r === "國小學生") return "elem";
+  if (r === "國中學生" || r === "高中職學生") return "junior";
+  if (r === "大學生" || r === "研究生" || r === "教師") return "senior";
+  const a = Number(age);
+  if (age !== "" && age != null && Number.isFinite(a) && a <= 12) return "elem";
+  return "junior";
+}
 // 單位關鍵字徽章
 export function badgesFor(org) {
   const o = String(org || "");

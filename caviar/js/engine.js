@@ -1,6 +1,6 @@
-// Canvas 2D 俯視引擎（晶球護衛隊沿用墨玉護衛隊引擎；只改 CFG／ITEM_LABEL／地圖裝飾）：32 px 地磚地圖、鏡頭跟隨、實體、碰撞、隊友環繞吸附、和聲共振、自動駕駛（autoplay）。
+// Canvas 2D 俯視引擎（晶球護衛隊沿用墨玉護衛隊引擎；只改 CFG／ITEM_LABEL／地圖裝飾）：32 px 地磚地圖、鏡頭跟隨、實體、碰撞、隊友環繞吸附、和聲共振、自動駕駛（autoplay）。白色圓盤操作：brake＝手指不在圓盤上（停止）。
 // 世界座標＝1× 像素；繪製時以整數倍 zoom 放大（devicePixelRatio 納入），imageSmoothingEnabled=false。
-import { wrap } from "./wheel.js";
+import { wrap } from "./pad.js";
 
 const TILE = 32;
 const TAU = Math.PI * 2;
@@ -267,6 +267,7 @@ export function createEngine({ canvas, sprites, onEvent = () => {} }) {
         const dx = h.x - W / 2, dy = h.y - H / 2, d = Math.hypot(dx, dy) || 1;
         vx += (-dy / d) * cfg.current; vy += (dx / d) * cfg.current;
       }
+      const ox = h.x, oy = h.y;
       h.x += vx * dt; h.y += vy * dt;
       const decay = Math.exp(-5 * dt);
       h.kbx *= decay; h.kby *= decay;
@@ -276,16 +277,17 @@ export function createEngine({ canvas, sprites, onEvent = () => {} }) {
       h.slow = Math.max(0, h.slow - dt);
       if (sp > 0) h.walk += dt;
       const sx = Math.sin(heading);
-      if (Math.abs(sx) > 0.15) h.flip = sx < 0;
-    }
-    // 第 2 關：在魚眼結塊旁繞圈攪散
-    const dH = Math.abs(wrap(heading - h.lastH));
-    h.lastH = heading;
-    if (cfg.locked && L.phase === "collect") {
+      if (Math.abs(sx) > 0.15 && sp > 0) h.flip = sx < 0;
+      h.moved = brake ? 0 : Math.hypot(h.x - ox, h.y - oy);
+    } else h.moved = 0;
+    // 第 2 關：在結塊粉團 80 px 內移動（來回走或繞圈）就能攪散：累積量＝移動距離／40＋方向變化量
+    const dH = brake ? 0 : Math.min(0.5, Math.abs(wrap(heading - h.lastH)));
+    if (!brake) h.lastH = heading;
+    if (cfg.locked && L.phase === "collect" && h.moved > 0) {
       for (const g of L.goods) {
         if (!g.locked) continue;
         if (Math.hypot(g.x - h.x, g.y - h.y) < 80) {
-          g.stir += dH;
+          g.stir += h.moved / 40 + dH;
           if (g.stir >= 5.0) { g.locked = false; puff(g.x, g.y, "#bff7d8", 14, 70); emit("stir"); }
         }
       }
@@ -464,6 +466,20 @@ export function createEngine({ canvas, sprites, onEvent = () => {} }) {
     }
     return best;
   }
+  // 右上箭頭指標用：收集階段＝最近的待收集物（不含加分物）；救援階段＝隊友泡泡
+  function pointerTarget() {
+    if (!L) return null;
+    const h = L.hero;
+    if (L.phase === "rescue" && L.rescue) return { x: L.rescue.x, y: L.rescue.y, sprite: `mate_${L.rescue.mate}`, kind: "rescue", dx: L.rescue.x - h.x, dy: L.rescue.y - h.y };
+    if (L.phase !== "collect") return null;
+    let best = null, bd = 1e9;
+    for (const g of L.goods) {
+      if (g.bonus || g.pull) continue;
+      const d = Math.hypot(g.x - h.x, g.y - h.y);
+      if (d < bd) { bd = d; best = g; }
+    }
+    return best ? { x: best.x, y: best.y, sprite: best.type, kind: "collect", dx: best.x - h.x, dy: best.y - h.y } : null;
+  }
   function apDecide() {
     if (!L || L.phase === "done") return null;
     const h = L.hero, { W, H } = L.map;
@@ -475,7 +491,12 @@ export function createEngine({ canvas, sprites, onEvent = () => {} }) {
     let vx = 0, vy = 0, dist = 0;
     if (tg) {
       dist = Math.hypot(tg.x - h.x, tg.y - h.y) || 1;
-      if (tg.locked && dist < 55) return { circle: true, harmony: wantHarmony, target: tg, dist };
+      if (tg.locked && dist < 60) { // 繞著粉團走：切線方向＋把半徑拉回 ~38 px
+        const ux = (tg.x - h.x) / dist, uy = (tg.y - h.y) / dist;
+        const k = (dist - 38) / 30;
+        const cx = -uy + ux * k, cy = ux + uy * k;
+        return { circle: true, heading: Math.atan2(cx, -cy), harmony: wantHarmony, target: tg, dist };
+      }
       vx = (tg.x - h.x) / dist; vy = (tg.y - h.y) / dist;
     } else { vx = W / 2 - h.x; vy = H / 2 - h.y; const d = Math.hypot(vx, vy) || 1; vx /= d; vy /= d; }
     for (const z of L.haz) {
@@ -494,7 +515,7 @@ export function createEngine({ canvas, sprites, onEvent = () => {} }) {
   }
 
   return {
-    start, update, render, resize, harmony, apDecide, snapshot,
+    start, update, render, resize, harmony, apDecide, snapshot, pointerTarget,
     get level() { return L; },
     get zoom() { return zoom; },
     get view() { return { cssW, cssH, dpr, zoom, viewW, viewH }; },
