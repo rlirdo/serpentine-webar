@@ -1,0 +1,89 @@
+{
+  "schema": "webar-game-v2",
+  "submitted_at": "2026-11-22T16:02:10+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "pid": "05qgmo7xu91v",
+  "sid": "hl2bjzl9m7jo",
+  "phase": "post",
+  "grade": "elem",
+  "mode": "drive",
+  "client_time": "2026-11-22T08:02:09.659Z",
+  "age": 25,
+  "gender": "男",
+  "org": "研究生｜東華大學",
+  "hero": "adult_m",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 2,
+      "correct": false
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "post": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 2,
+      "correct": false
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    }
+  ],
+  "preScore": 2,
+  "postSame3": 2,
+  "postScore": 2,
+  "stars": [
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3
+  ],
+  "totalStars": 23,
+  "facets": {
+    "知識": 50,
+    "態度": 100,
+    "行動": 50,
+    "探究": 50
+  },
+  "commit": "珍惜海洋資源，不亂丟垃圾",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/31.0 Chrome/148.0.0.0 Mobile Sa"
+}
