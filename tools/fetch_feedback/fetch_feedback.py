@@ -58,8 +58,16 @@ v7.1（2026/11/25）：
     活動代碼規則：組別-學段-施測日期（GAME＝遊戲班、CTRL＝對照班；E＝國小、J＝國中），例 CTRL-E-20261201、GAME-J-20261203，
     同日同組多班加 -2。CLI --research-export 介面不變。
 
+v7.2（2026/11/25）：學生版課後問卷（遊戲班）新增六題科技接受度（TAM，改編自 Davis, 1989；題目文字為草稿）：
+    選填鍵 pe1–pe3（知覺易用性 PEOU）、pu1–pu3（知覺有用性 PU），1–5 整數。六題齊全且有效才採用；
+    不齊或越界的那份，六題留空並在「科技接受度註記」欄標示（整份問卷照常納入）；沒有這些鍵的紀錄照舊。
+    「課後問卷」加 PE1–PE3、PU1–PU3、知覺易用性平均、知覺有用性平均、科技接受度註記欄；
+    「課後問卷統計」加「科技接受度（僅遊戲班作答）」區；課後問卷 CSV 加 pe1–pu3、peou_mean、pu_mean。
+    一般回饋問卷分頁（成人版彙整）不加這六欄，帶 TAM 鍵的學生問卷照常彙整、輸出格式不變。
+    摘要（GUI 研究分頁、CLI）加「其中含科技接受度題 N 份」。
+
 安全原則：GitHub Token 只存在記憶體，不寫入任何檔案或日誌。
-版本：7.1.0（2026/11/25）
+版本：7.2.0（2026/11/25）
 """
 from __future__ import annotations
 
@@ -79,7 +87,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 APP_TITLE = "撈取 GitHub 問卷資料"
-VERSION = "7.1.0"
+VERSION = "7.2.0"
 OWNER = "rlirdo"
 REPO = "serpentine-webar"
 REMOTE_DIR = "feedback/responses"
@@ -511,6 +519,58 @@ STUDENT_DEFAULT_EVENT = "STUDENT-TEST"                       # 學生問卷單�
 RESEARCH_DEFAULT_EVENTS = ("CTRL-TEST", "STUDY-GAME", STUDENT_DEFAULT_EVENT)
 RESEARCH_EVENT_PREFIXES = ("GAME-", "CTRL-")
 
+# v7.2：學生版課後問卷（遊戲班）科技接受度 TAM 六題（選填；1–5 整數；改編自 Davis, 1989；題目文字為草稿）
+TAM_FACETS = [  # (代碼, 構面名, 英文縮寫, [(欄位, 標籤)…], CSV 平均欄名)
+    ("pe", "知覺易用性", "PEOU", [("pe1", "PE1 我覺得這個 WebAR 遊戲很容易操作"),
+                                ("pe2", "PE2 我很快就學會怎麼玩這個遊戲"),
+                                ("pe3", "PE3 遊戲裡的說明和提示我看得懂")], "peou_mean"),
+    ("pu", "知覺有用性", "PU", [("pu1", "PU1 這個遊戲幫助我了解看不見的晶格和離子"),
+                              ("pu2", "PU2 用這個遊戲學習，比只聽講解更容易懂"),
+                              ("pu3", "PU3 我覺得這個遊戲對學習自然科學有幫助")], "pu_mean"),
+]
+TAM_ITEMS = [it for _, _, _, items, _ in TAM_FACETS for it in items]
+TAM_KEYS = [k for k, _ in TAM_ITEMS]
+TAM_SOURCE = "改編自 Davis（1989）科技接受模式；題目文字為草稿"
+
+
+def _tam_int(v):
+    """TAM 單題：1–5 整數（接受 4、4.0、"4"）才有效，其他回傳 None。"""
+    if isinstance(v, bool) or v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+        if not v:
+            return None
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    if f != f or not f.is_integer() or not 1 <= f <= 5:
+        return None
+    return int(f)
+
+
+def parse_tam(raw: dict) -> tuple[dict | None, str]:
+    """原始 TAM 鍵 → (六題數值 dict 或 None, 註記)。
+    完全沒有（或全為空值）＝(None, "")；六題齊全且皆為 1–5 整數＝(dict, "")；
+    其他（不齊、越界、非整數）＝(None, 說明)，該份 TAM 六題留空，整份問卷照常保留。"""
+    raw = raw or {}
+    given = {k: raw[k] for k in TAM_KEYS
+             if k in raw and raw[k] is not None and not (isinstance(raw[k], str) and not raw[k].strip())}
+    if not given:
+        return None, ""
+    vals = {k: _tam_int(v) for k, v in given.items()}
+    missing = [k for k in TAM_KEYS if k not in given]
+    bad = [f"{k}={given[k]}" for k in TAM_KEYS if k in given and vals[k] is None]
+    if not missing and not bad:
+        return vals, ""
+    parts = []
+    if missing:
+        parts.append("缺 " + "、".join(missing))
+    if bad:
+        parts.append("非 1–5 整數：" + "、".join(bad))
+    return None, "科技接受度題不完整或無效（" + "；".join(parts) + "），六題留空"
+
 
 def is_research_event(event, extra_codes=()) -> bool:
     """活動代碼是否屬於研究（不分大小寫）：GAME-／CTRL- 開頭、CTRL-TEST／STUDY-GAME／STUDENT-TEST，
@@ -834,6 +894,8 @@ def load_records(jdir: Path, log=print) -> list[dict]:
                 rec[k] = _to_score(obj.get(k))
             for k, _ in OPENS_V2:
                 rec[k] = _to_text(obj.get(k)).strip()
+            # v7.2：學生版 TAM 選填鍵（原值暫存於私有鍵；不屬 FIELDS，一般回饋問卷輸出不變）
+            rec["_tam_raw"] = {k: obj[k] for k in TAM_KEYS if k in obj}
         if ver in ("v1", "未知"):
             for k, _ in V1_FIELDS:
                 rec[k] = _to_score(obj.get(k)) if k in LIKERT_V1 else _to_text(obj.get(k))
@@ -2574,6 +2636,16 @@ def load_survey_records(jdir: Path, research_recs: list[dict], codes=(), log=pri
             s[code + "_mean"] = _fmean([s[k] for k in ks if isinstance(s[k], (int, float))])
         for _, _, _, (ok, _) in STUDENT_FACETS:
             s[ok] = r.get(ok, "")
+        # v7.2：TAM 六題（齊全且有效才填；不齊或越界留空並註記）
+        tam, note = parse_tam(r.get("_tam_raw"))
+        s["tam_ok"] = tam is not None
+        s["tam_note"] = note
+        for k in TAM_KEYS:
+            s[k] = tam[k] if tam else ""
+        for code, _, _, items, _ in TAM_FACETS:
+            s[code + "_mean"] = _fmean([tam[k] for k, _ in items]) if tam else ""
+        if note:
+            log(f"注意：{r['file']} {note}")
         out.append(s)
     out.sort(key=_game_sort_key)
     return out
@@ -2609,6 +2681,16 @@ def _survey_block(rows: list[dict]) -> dict:
     for code, _, _ in SURVEY_FACETS:
         v = [r[code + "_mean"] for r in rows if isinstance(r.get(code + "_mean"), (int, float))]
         d["facets"][code] = (_fmean(v), _fsd(v), len(v))
+    # v7.2：科技接受度（只計六題齊全有效的問卷；構面以每份問卷的構面平均計算）
+    tam_rows = [r for r in rows if r.get("tam_ok")]
+    t = {"n": len(tam_rows), "items": {}, "facets": {}}
+    for k in TAM_KEYS:
+        v = [r[k] for r in tam_rows]
+        t["items"][k] = (_fmean(v), _fsd(v), len(v))
+    for code, _, _, _, _ in TAM_FACETS:
+        v = [r[code + "_mean"] for r in tam_rows]
+        t["facets"][code] = (_fmean(v), _fsd(v), len(v))
+    d["tam"] = t
     return d
 
 
@@ -2627,7 +2709,9 @@ def compute_survey_stats(rows: list[dict]) -> dict:
         count[r["group"] if r["group"] in count else ""] += 1
     return {"n": len(rows), "by_group": count, "groups": {k: _survey_block(by[k]) for k in order}, "order": order,
             "merged": {k: _survey_block(merged[k]) for k in morder}, "merged_order": morder,
-            "all": _survey_block(rows)}
+            "all": _survey_block(rows),
+            "tam_n": sum(1 for r in rows if r.get("tam_ok")),                 # v7.2
+            "tam_invalid": sum(1 for r in rows if r.get("tam_note"))}
 
 
 def _survey_key_text(k: tuple) -> str:
@@ -2640,10 +2724,17 @@ def survey_count_text(st: dict) -> str:
             + (f"、組別未知 {c['']}" if c[""] else "") + "）")
 
 
+def tam_count_text(st: dict) -> str:
+    """v7.2：「其中含科技接受度題 N 份」（有不完整／無效者另註）。"""
+    n, bad = st.get("tam_n", 0), st.get("tam_invalid", 0)
+    return f"其中含科技接受度題 {n} 份" + (f"（另 {bad} 份 TAM 不完整或無效，已留空）" if bad else "")
+
+
 def survey_columns() -> list[str]:
     return (["row", "event", "group", "group_code", "grade", "submitted_at"]
             + [x for k, _ in STUDENT_KNOWLEDGE for x in (k, k + "_correct")] + ["k_score"]
-            + SURVEY_LIKERT + [SURVEY_MEAN_COLS[c] for c, _, _ in SURVEY_FACETS] + ["file"])
+            + SURVEY_LIKERT + [SURVEY_MEAN_COLS[c] for c, _, _ in SURVEY_FACETS]
+            + TAM_KEYS + [col for _, _, _, _, col in TAM_FACETS] + ["file"])   # v7.2：TAM 欄
 
 
 def survey_analysis_rows(rows: list[dict]) -> list[list]:
@@ -2656,6 +2747,7 @@ def survey_analysis_rows(rows: list[dict]) -> list[list]:
                      r["grade"] or "unknown", t.strftime("%Y-%m-%d %H:%M:%S") if t else (r["submitted_raw"] or None)]
                     + [x for k, _ in STUDENT_KNOWLEDGE for x in (nz(r[k]), nz(r[k + "_ok"]))] + [nz(r["k_score"])]
                     + [nz(r[k]) for k in SURVEY_LIKERT] + [nz(r[c + "_mean"]) for c, _, _ in SURVEY_FACETS]
+                    + [nz(r.get(k, "")) for k in TAM_KEYS] + [nz(r.get(c + "_mean", "")) for c, _, _, _, _ in TAM_FACETS]
                     + [r["file"]])
     return out
 
@@ -2677,9 +2769,11 @@ def _write_survey_sheets(wb, surveys: list[dict], sst: dict, hfont, hfill, sfill
         hdr += [f"{lab.split()[0]} 作答", f"{lab.split()[0]} 對錯(1/0；正解 {STUDENT_ANSWER_KEY[k]})"]
     hdr += ["知識答對數(0–3)"] + [lab for code, _, items, _ in STUDENT_FACETS if code != "k" for _, lab in items]
     hdr += [f"{name}平均" for _, name, _ in SURVEY_FACETS]
-    hdr += [olab for _, _, _, (_, olab) in STUDENT_FACETS] + ["裝置摘要", "組別／學段依據", "檔名"]
+    hdr += [lab for _, lab in TAM_ITEMS] + [f"{name}平均" for _, name, _, _, _ in TAM_FACETS]   # v7.2：TAM
+    hdr += [olab for _, _, _, (_, olab) in STUDENT_FACETS] + ["裝置摘要", "組別／學段依據", "科技接受度註記", "檔名"]
     ws.append(hdr)
     _style_header(ws[1], hfont, hfill)
+    wrap_cols = {i for i, h in enumerate(hdr, 1) if "簡答" in h or h == "科技接受度註記"}
     if not surveys:
         ws.append([SURVEY_NONE_TEXT])
     for n, r in enumerate(surveys, 1):
@@ -2688,17 +2782,20 @@ def _write_survey_sheets(wb, surveys: list[dict], sst: dict, hfont, hfill, sfill
         for k, _ in STUDENT_KNOWLEDGE:
             row += [r[k], r[k + "_ok"]]
         row += [r["k_score"]] + [r[k] for k in SURVEY_LIKERT] + [r[c + "_mean"] for c, _, _ in SURVEY_FACETS]
-        row += [r[ok] for _, _, _, (ok, _) in STUDENT_FACETS] + [ua_summary(r["ua"]), r["basis"], r["file"]]
+        row += [r.get(k, "") for k in TAM_KEYS] + [r.get(c + "_mean", "") for c, _, _, _, _ in TAM_FACETS]
+        row += [r[ok] for _, _, _, (ok, _) in STUDENT_FACETS]
+        row += [ua_summary(r["ua"]), r["basis"], r.get("tam_note", ""), r["file"]]
         ws.append(_safe_row(row))
         for c in ws[ws.max_row]:
             c.font = bfont
             if c.column == 5 and isinstance(c.value, datetime):
                 c.number_format = tfmt
-            if c.column >= len(hdr) - 6 and c.column <= len(hdr) - 3:
+            if c.column in wrap_cols:
                 c.alignment = Alignment(wrap_text=True, vertical="top")
         _as_text(ws[ws.max_row])
     for i, h in enumerate(hdr, 1):
-        w = 6 if i == 1 else 20 if i == 2 else 19 if i == 5 else 36 if "簡答" in h else 30 if i == len(hdr) else 12
+        w = (6 if i == 1 else 20 if i == 2 else 19 if i == 5 else 36 if "簡答" in h else 30 if i == len(hdr)
+             else 28 if h == "科技接受度註記" else 12)
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "C2"
 
@@ -2746,12 +2843,50 @@ def _write_survey_sheets(wb, surveys: list[dict], sst: dict, hfont, hfill, sfill
         for k in sst["merged_order"]:
             block_row(_survey_key_text(k), sst["merged"][k])
         block_row("全部", sst["all"])
+    # v7.2：科技接受度（僅遊戲班作答）；只列有 TAM 作答的分組
+    st.append([])
+    h("科技接受度（僅遊戲班作答）", "內容")
+    st.append(["說明", f"TAM 六題（{TAM_SOURCE}）只出現在遊戲班的學生版課後問卷；六題齊全且皆為 1–5 整數才計入，"
+                       "不完整或無效者在「課後問卷」的「科技接受度註記」欄標示。構面平均與標準差以每份問卷的構面平均"
+                       "（該構面三題平均）計算；樣本標準差 n−1，不足 2 份留白。"])
+    st.append(["份數", tam_count_text(sst)])
+    tcols = ["問卷份數", "含科技接受度份數"]
+    for _, lab in TAM_ITEMS:
+        tcols += [f"{lab.split()[0]} 平均", f"{lab.split()[0]} 標準差"]
+    tcols += [x for _, name, abbr, _, _ in TAM_FACETS for x in (f"{name}（{abbr}）平均", f"{name}（{abbr}）標準差")]
+
+    def tam_row(label, d):
+        t = d["tam"]
+        row = [label, d["n"], t["n"]]
+        for k in TAM_KEYS:
+            row += list(t["items"][k][:2])
+        for code, _, _, _, _ in TAM_FACETS:
+            row += list(t["facets"][code][:2])
+        st.append(row)
+
+    if not sst.get("tam_n"):
+        st.append(["尚無科技接受度作答"])
+    else:
+        h("組別｜學段｜活動代碼", *tcols)
+        for k in sst["order"]:
+            if sst["groups"][k]["tam"]["n"]:
+                tam_row(_survey_key_text(k), sst["groups"][k])
+        st.append([])
+        h("組別｜學段（合併各班）", *tcols)
+        for k in sst["merged_order"]:
+            if sst["merged"][k]["tam"]["n"]:
+                tam_row(_survey_key_text(k), sst["merged"][k])
+        tam_row("全部", sst["all"])
     st.append([])
     h("題號", "題目（學生版課後問卷）", "正解")
     for code, name, items, (ok, olab) in STUDENT_FACETS:
         for k, lab in items:
             st.append([k, f"【{name}】{lab}", STUDENT_ANSWER_KEY.get(k, "（1–5 量表）")])
         st.append([ok, f"【{name}】{olab}", "（簡答）"])
+    for code, name, abbr, items, _ in TAM_FACETS:                          # v7.2
+        for k, lab in items:
+            st.append([k, f"【科技接受度－{name}（{abbr}）】{lab}", "（1–5 量表；僅遊戲班）"])
+    st.append(["", f"科技接受度題：{TAM_SOURCE}。", ""])
     for row in st.iter_rows():
         for c in row:
             c.font = bfont
@@ -2880,12 +3015,15 @@ def research_summary_lines(res: dict) -> list[str]:
     if sst is not None:
         if res.get("survey_remote") is not None:
             out.append(f"回饋問卷 GitHub 上 {res['survey_remote']} 筆、本次新下載 {res['survey_new']} 筆（含成人版，已排除）")
-        out.append(survey_count_text(sst) + "；與前後測無個人層級對應，只做班級層級比較")
+        out.append(survey_count_text(sst) + "；" + tam_count_text(sst) + "；與前後測無個人層級對應，只做班級層級比較")
         for k in sst["order"]:
             d = sst["groups"][k]
             fm = "、".join(f"{name} {d['facets'][c][0] if d['facets'][c][0] != '' else '—'}" for c, name, _ in SURVEY_FACETS)
+            t = d.get("tam") or {"n": 0}
+            tm = ("；科技接受度 {} 份：".format(t["n"]) + "、".join(
+                f"{name} {t['facets'][c][0]}" for c, name, _, _, _ in TAM_FACETS)) if t["n"] else ""
             out.append(f"　{_survey_key_text(k)}：{d['n']} 份；知識答對數平均 "
-                       f"{d['k_score'][0] if d['k_score'][0] != '' else '—'}／3；{fm}")
+                       f"{d['k_score'][0] if d['k_score'][0] != '' else '—'}／3；{fm}{tm}")
     out.append(f"輸出：{res['path']}")
     for g, p in res.get("csv", {}).items():
         out.append(f"CSV（{GRADE_LABEL[g]}）：{p}")
@@ -3261,7 +3399,8 @@ def main() -> None:
                     head = "尚無研究資料（GitHub 上還沒有 feedback/test）。已輸出空白格式的檔案：\n" \
                         if payload["local"] == 0 else "匯出完成：\n"
                     sst = payload.get("survey_stats")
-                    stext = ("\n" + survey_count_text(sst) + "（只能做班級層級比較）") if sst else ""
+                    stext = ("\n" + survey_count_text(sst) + "，" + tam_count_text(sst)
+                             + "（只能做班級層級比較）") if sst else ""
                     if messagebox.askyesno(APP_TITLE, head + payload["path"]
                                            + f"\n\n學生 {payload['students']} 人（完成前後測 {payload['complete']} 人）、"
                                            f"略過重複 {payload['dropped']} 筆；" + stext
@@ -3379,6 +3518,8 @@ def main() -> None:
     ui_log("研究用前後測（v7）：切到下方「研究用前後測」分頁，可依時間、活動、組別、版本篩選後匯出 Excel 與分析用 CSV。")
     ui_log("v7.1：研究分頁有自己的「研究資料夾」；匯出時一併下載學生版課後問卷（活動代碼 GAME-／CTRL-…），"
            "加「課後問卷」「課後問卷統計」工作表與課後問卷 CSV。")
+    ui_log("v7.2：遊戲班課後問卷的科技接受度六題（PE1–PE3 易用性、PU1–PU3 有用性）一併匯出，"
+           "統計表多「科技接受度（僅遊戲班作答）」區，CSV 多 pe1–pu3、peou_mean、pu_mean。")
     ui_log("按「下載新問卷」從 GitHub 撈取回覆；只下載本機沒有的新檔。")
     ui_log("遊戲前後測：設定起迄時間、重複判定分鐘數與活動後，按「下載並匯出 Excel…」。")
     ui_log("題庫與問卷正解依紀錄的活動自動切換（人工魚子醬 HL-STATION-2026-1127-CAVIAR 用晶球題庫；"

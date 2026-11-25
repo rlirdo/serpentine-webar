@@ -16,7 +16,10 @@ v7：新增 TestResearch（研究用前後測 feedback/test：樣本 test_sample
 404＝尚無研究資料、只下載到 test_json；題庫與 js/content.js、js/study.js、Code.gs 一致）。
 v7.1：新增 TestStudentSurvey（研究資料夾 research_dest 設定與舊 config 相容、學生版課後問卷挑選與成人版排除、
 由研究紀錄／代碼推斷組別學段、統計數字、空資料、下載到 json；樣本 test_samples/student_feedback 為虛構作答）。
-研究匯出另查 feedback/responses，故 v7 兩個 mock 測試改為檢查第一個／最後一個請求、補一個空清單回應；xlsx 工作表加兩張。"""
+研究匯出另查 feedback/responses，故 v7 兩個 mock 測試改為檢查第一個／最後一個請求、補一個空清單回應；xlsx 工作表加兩張。
+v7.2：新增 TestTam（學生版課後問卷遊戲班 TAM 六題 pe1–pe3／pu1–pu3：完整、缺漏、越界／非整數、無 TAM、統計數字、
+xlsx 新欄與統計區、CSV 欄位、空資料、一般回饋問卷分頁不受影響、摘要句）。樣本 gamee1／gamee2／gamej1 補上 TAM 值，
+對照班與 studye 維持沒有 TAM；既有斷言只改 VERSION。"""
 import re
 import csv
 import json
@@ -581,7 +584,7 @@ class TestGameV2(unittest.TestCase):
         return ff.load_game_records(self.jdir, log=self.logs.append)
 
     def test_constants(self):
-        self.assertEqual(ff.VERSION, "7.1.0")   # v7.1.0：研究資料夾＋學生版課後問卷
+        self.assertEqual(ff.VERSION, "7.2.0")   # v7.2.0：學生版課後問卷 TAM 六題
         self.assertEqual(ff.GAME_SCHEMAS, ("webar-game-v1", "webar-game-v2"))
         self.assertEqual(ff.MODE_LABEL["drive"], "方向盤版")
         self.assertIn(HL, ff.EVENT_PRESETS)
@@ -1654,6 +1657,214 @@ class TestStudentSurvey(unittest.TestCase):
             res = ff.run_research_export(Path(d), Path(d) / "y.xlsx", session=s2, log=self.logs.append)
             self.assertTrue((Path(d) / "y.xlsx").exists())
             self.assertTrue(any("回饋問卷下載失敗" in m for m in self.logs))
+
+
+# ---------------------------------------------------------------- v7.2：學生版課後問卷 TAM 六題
+class TestTam(unittest.TestCase):
+    """共用 TestStudentSurvey 的 setUp／tearDown／surveys（樣本複製到暫存資料夾）。"""
+    setUp = TestStudentSurvey.setUp
+    tearDown = TestStudentSurvey.tearDown
+    surveys = TestStudentSurvey.surveys
+
+    def add_survey(self, name: str, event: str, tam: dict):
+        body = json.loads((STUDENT_SAMPLES / "20261201-110100_gamee2.json").read_text("utf-8"))
+        for k in ff.TAM_KEYS:
+            body.pop(k, None)
+        body.update({"event": event, "submitted_at": "2026-12-01T11:05:00+08:00", **tam})
+        (self.dest / ff.JSON_SUBDIR / name).write_text(json.dumps(body, ensure_ascii=False), "utf-8")
+
+    def tam_section(self, ws) -> list[tuple]:
+        rows = list(ws.iter_rows(values_only=True))
+        i = next(n for n, r in enumerate(rows) if r[0] == "科技接受度（僅遊戲班作答）")
+        j = next(n for n, r in enumerate(rows) if r[0] == "題號")
+        return rows[i:j]
+
+    def test_constants_and_parse(self):
+        self.assertEqual(ff.TAM_KEYS, ["pe1", "pe2", "pe3", "pu1", "pu2", "pu3"])
+        self.assertEqual([c for _, _, _, _, c in ff.TAM_FACETS], ["peou_mean", "pu_mean"])
+        self.assertIn("很容易操作", dict(ff.TAM_ITEMS)["pe1"])
+        self.assertIn("自然科學", dict(ff.TAM_ITEMS)["pu3"])
+        full = dict(zip(ff.TAM_KEYS, [5, 4, 3, 2, 1, 5]))
+        self.assertEqual(ff.parse_tam(full), (full, ""))
+        self.assertEqual(ff.parse_tam({**full, "pe1": "4", "pu3": 3.0})[0]["pe1"], 4)       # "4"、3.0 視為整數
+        self.assertEqual(ff.parse_tam({}), (None, ""))                                        # 無 TAM
+        self.assertEqual(ff.parse_tam(None), (None, ""))
+        self.assertEqual(ff.parse_tam(dict.fromkeys(ff.TAM_KEYS, "")), (None, ""))           # 全空＝沒作答
+        self.assertEqual(ff.parse_tam(dict.fromkeys(ff.TAM_KEYS)), (None, ""))
+        v, note = ff.parse_tam({"pe1": 5, "pe2": 4})                                          # 缺漏
+        self.assertIsNone(v)
+        self.assertIn("缺 pe3、pu1、pu2、pu3", note)
+        for bad in (0, 6, 3.5, "abc", True, -1, "5.5"):                                       # 越界／非整數
+            v, note = ff.parse_tam({**full, "pu2": bad})
+            self.assertIsNone(v, bad)
+            self.assertIn("非 1–5 整數：pu2=", note)
+        v, note = ff.parse_tam({**full, "pe2": None, "pu1": 9})                               # 缺漏＋越界
+        self.assertIn("缺 pe2", note)
+        self.assertIn("pu1=9", note)
+
+    def test_samples_load_tam(self):
+        by = self.surveys()
+        g = by["gamee1"]
+        self.assertTrue(g["tam_ok"])
+        self.assertEqual([g[k] for k in ff.TAM_KEYS], [5, 4, 5, 5, 5, 4])
+        self.assertEqual((g["pe_mean"], g["pu_mean"], g["tam_note"]), (4.667, 4.667, ""))
+        for k in ("ctrle1", "ctrle2", "ctrlr2", "studye", "stutst"):                         # 對照班與舊資料：照舊
+            r = by[k]
+            self.assertFalse(r["tam_ok"], k)
+            self.assertEqual(([r[x] for x in ff.TAM_KEYS], r["pe_mean"], r["pu_mean"], r["tam_note"]),
+                             ([""] * 6, "", "", ""), k)
+        self.assertEqual(by["ctrle1"]["k_score"], 3)                                          # 其餘欄位不受影響
+
+    def test_incomplete_and_invalid_kept(self):
+        self.add_survey("20261201-110500_tampar.json", "GAME-E-20261201", {"pe1": 5, "pe2": 4, "pe3": 4})
+        self.add_survey("20261201-110600_tambad.json", "GAME-E-20261201",
+                        dict(zip(ff.TAM_KEYS, [5, 5, 5, 6, 4, 4])))
+        self.add_survey("20261201-110700_tamnul.json", "GAME-E-20261201", dict.fromkeys(ff.TAM_KEYS))
+        logs = []
+        recs = ff.load_research_records(self.dest / ff.TEST_JSON_SUBDIR, log=lambda m: None)
+        rows = ff.load_survey_records(self.dest / ff.JSON_SUBDIR, recs, {r["event"] for r in recs}, log=logs.append)
+        by = {r["file"].split("_")[1][:6]: r for r in rows}
+        self.assertEqual(len(rows), 11)                                                       # 整份問卷不丟
+        for k in ("tampar", "tambad"):
+            r = by[k]
+            self.assertFalse(r["tam_ok"])
+            self.assertEqual(([r[x] for x in ff.TAM_KEYS], r["pe_mean"], r["pu_mean"]), ([""] * 6, "", ""))
+            self.assertIn("六題留空", r["tam_note"])
+            self.assertEqual((r["group"], r["k_score"], r["a1"]), ("game", 2, 4))
+        self.assertIn("缺 pu1、pu2、pu3", by["tampar"]["tam_note"])
+        self.assertIn("pu1=6", by["tambad"]["tam_note"])
+        self.assertEqual((by["tamnul"]["tam_ok"], by["tamnul"]["tam_note"]), (False, ""))     # 全 null＝沒作答
+        self.assertTrue(any("tampar" in m and "不完整" in m for m in logs))
+        sst = ff.compute_survey_stats(rows)
+        self.assertEqual((sst["tam_n"], sst["tam_invalid"]), (3, 2))
+        d = sst["groups"][("game", "elem", "GAME-E-20261201")]
+        self.assertEqual((d["n"], d["tam"]["n"]), (5, 2))                                     # 無效者不入 TAM 統計
+        self.assertEqual(ff.tam_count_text(sst), "其中含科技接受度題 3 份（另 2 份 TAM 不完整或無效，已留空）")
+        out = self.dest / "bad.xlsx"
+        res = ff.run_research_export(self.dest, out, offline=True, log=self.logs.append)
+        self.assertEqual(res["surveys"], 11)
+        ws = load_workbook(out)["課後問卷"]
+        hdr = [c.value for c in ws[1]]
+        x = next(dict(zip(hdr, r)) for r in ws.iter_rows(min_row=2, values_only=True)
+                 if r[hdr.index("檔名")] == "20261201-110600_tambad.json")
+        self.assertIn("pu1=6", x["科技接受度註記"])
+        self.assertIsNone(x["知覺有用性平均"])
+
+    def test_tam_stats_numbers(self):
+        sst = ff.compute_survey_stats(list(self.surveys().values()))
+        self.assertEqual((sst["tam_n"], sst["tam_invalid"]), (3, 0))
+        t = sst["groups"][("game", "elem", "GAME-E-20261201")]["tam"]
+        self.assertEqual(t["n"], 2)
+        self.assertEqual(t["items"]["pe1"], (4.5, 0.707, 2))
+        self.assertEqual(t["items"]["pe2"], (4.0, 0.0, 2))
+        self.assertEqual(t["items"]["pe3"], (4.0, 1.414, 2))
+        self.assertEqual(t["items"]["pu2"], (5.0, 0.0, 2))
+        self.assertEqual(t["facets"]["pe"], (4.167, 0.707, 2))      # 每份構面平均 4.667、3.667
+        self.assertEqual(t["facets"]["pu"], (4.5, 0.236, 2))        # 每份構面平均 4.667、4.333
+        one = sst["groups"][("game", "junior", "GAME-J-20261203")]["tam"]
+        self.assertEqual((one["n"], one["items"]["pu3"], one["facets"]["pe"]), (1, (5, "", 1), (3.667, "", 1)))
+        m = sst["merged"][("game", "elem")]                          # GAME-E＋STUDY-E-R2（studye 無 TAM）
+        self.assertEqual((m["n"], m["tam"]["n"], m["tam"]["facets"]["pu"]), (3, 2, (4.5, 0.236, 2)))
+        for k in (("control", "elem", "CTRL-E-20261201"), ("", "", "STUDENT-TEST")):
+            self.assertEqual((sst["groups"][k]["tam"]["n"], sst["groups"][k]["tam"]["items"]["pe1"]), (0, ("", "", 0)))
+        a = sst["all"]["tam"]
+        self.assertEqual((a["n"], a["items"]["pe1"]), (3, (4.0, 1.0, 3)))
+
+    def test_export_columns_section_and_csv(self):
+        out = self.dest / "t.xlsx"
+        res = ff.run_research_export(self.dest, out, offline=True, log=self.logs.append)
+        wb = load_workbook(out)
+        ws = wb["課後問卷"]
+        hdr = [c.value for c in ws[1]]
+        for col in ("PE1 我覺得這個 WebAR 遊戲很容易操作", "PE3 遊戲裡的說明和提示我看得懂",
+                    "PU1 這個遊戲幫助我了解看不見的晶格和離子", "PU3 我覺得這個遊戲對學習自然科學有幫助",
+                    "知覺易用性平均", "知覺有用性平均", "科技接受度註記"):
+            self.assertIn(col, hdr)
+        self.assertLess(hdr.index("科學探究平均"), hdr.index("PE1 我覺得這個 WebAR 遊戲很容易操作"))
+        self.assertEqual(hdr[-1], "檔名")
+        rows = {r["檔名"]: r for r in (dict(zip(hdr, v)) for v in ws.iter_rows(min_row=2, values_only=True))}
+        g = rows["20261203-090000_gamej1.json"]
+        self.assertEqual((g["PE1 我覺得這個 WebAR 遊戲很容易操作"], g["知覺易用性平均"], g["知覺有用性平均"]),
+                         (3, 3.667, 4.333))
+        c = rows["20261201-100000_ctrle1.json"]
+        self.assertEqual((c["PU2 用這個遊戲學習，比只聽講解更容易懂"], c["知覺易用性平均"], c["科技接受度註記"]),
+                         (None, None, None))
+        self.assertEqual(c["K 簡答：學到的一件新事情"], "石頭磨細後表面積變大")             # 簡答欄位置正確
+        sec = self.tam_section(wb["課後問卷統計"])
+        flat = [str(v) for r in sec for v in r if v is not None]
+        self.assertIn("其中含科技接受度題 3 份", flat)
+        self.assertIn("知覺易用性（PEOU）平均", flat)
+        self.assertIn("知覺有用性（PU）標準差", flat)
+        labels = [r[0] for r in sec]
+        self.assertIn("遊戲班｜國小｜GAME-E-20261201", labels)
+        self.assertIn("遊戲班｜國中｜GAME-J-20261203", labels)
+        self.assertIn("遊戲班｜國小", labels)
+        self.assertNotIn("對照班｜國小｜CTRL-E-20261201", labels)                             # 只列有 TAM 的分組
+        hrow = next(r for r in sec if r[0] == "組別｜學段｜活動代碼")
+        ge = dict(zip(hrow, next(r for r in sec if r[0] == "遊戲班｜國小｜GAME-E-20261201")))
+        self.assertEqual((ge["問卷份數"], ge["含科技接受度份數"], ge["PE1 平均"], ge["PE1 標準差"],
+                          ge["知覺易用性（PEOU）平均"], ge["知覺有用性（PU）標準差"]), (2, 2, 4.5, 0.707, 4.167, 0.236))
+        al = dict(zip(hrow, next(r for r in sec if r[0] == "全部")))
+        self.assertEqual((al["問卷份數"], al["含科技接受度份數"]), (8, 3))
+        qrows = [r for r in wb["課後問卷統計"].iter_rows(values_only=True) if r[0] in ff.TAM_KEYS]
+        self.assertEqual([r[0] for r in qrows], ff.TAM_KEYS)                                  # 題目對照補六題
+        self.assertIn("知覺易用性", qrows[0][1])
+        with open(res["survey_csv"], encoding="utf-8-sig", newline="") as f:
+            crow = list(csv.reader(f))
+        self.assertEqual(crow[0][-9:], ["pe1", "pe2", "pe3", "pu1", "pu2", "pu3", "peou_mean", "pu_mean", "file"])
+        d = {x["file"]: x for x in (dict(zip(crow[0], r)) for r in crow[1:])}
+        g1 = d["20261201-110000_gamee1.json"]
+        self.assertEqual((g1["pe1"], g1["pu3"], g1["peou_mean"], g1["pu_mean"], g1["action_mean"]),
+                         ("5", "4", "4.667", "4.667", "4.667"))
+        c2 = d["20261201-100200_ctrle2.json"]
+        self.assertEqual([c2[k] for k in ff.TAM_KEYS + ["peou_mean", "pu_mean"]], [""] * 8)  # 缺值留空
+        summ = "\n".join(self.logs)
+        self.assertIn("課後問卷 8 份（遊戲班 4、對照班 3、組別未知 1）；其中含科技接受度題 3 份", summ)
+        self.assertIn("遊戲班｜國小｜GAME-E-20261201：2 份", summ)
+        self.assertIn("科技接受度 2 份：知覺易用性 4.167、知覺有用性 4.5", summ)
+
+    def test_cli_summary_line(self):
+        out = self.dest / "cli.xlsx"
+        self.assertEqual(ff.cli_research_export([str(self.dest), str(out), "--group", "遊戲班", "--offline"]), 0)
+        txt = (self.dest / ff.RESEARCH_SUMMARY_NAME).read_text("utf-8")
+        self.assertIn("課後問卷 4 份（遊戲班 4、對照班 0）；其中含科技接受度題 3 份", txt)
+
+    def test_empty_and_control_only(self):
+        out = self.dest / "c.xlsx"
+        self.assertEqual(ff.cli_research_export([str(self.dest), str(out), "--group", "對照班", "--offline"]), 0)
+        txt = (self.dest / ff.RESEARCH_SUMMARY_NAME).read_text("utf-8")
+        self.assertIn("其中含科技接受度題 0 份", txt)
+        wb = load_workbook(out)
+        flat = [str(v) for r in self.tam_section(wb["課後問卷統計"]) for v in r if v is not None]
+        self.assertIn("尚無科技接受度作答", flat)
+        with open(ff.survey_csv_path(out), encoding="utf-8-sig", newline="") as f:
+            crow = list(csv.reader(f))
+        self.assertIn("peou_mean", crow[0])
+        self.assertTrue(all(r[crow[0].index("pu_mean")] == "" for r in crow[1:]))
+        sst = ff.compute_survey_stats([])
+        self.assertEqual((sst["tam_n"], sst["tam_invalid"], sst["all"]["tam"]["n"]), (0, 0, 0))
+        self.assertEqual(sst["all"]["tam"]["facets"]["pe"], ("", "", 0))
+        self.assertEqual(ff.tam_count_text(sst), "其中含科技接受度題 0 份")
+        with tempfile.TemporaryDirectory() as d:                     # 研究資料夾全空
+            res = ff.run_research_export(Path(d), Path(d) / "z.xlsx", offline=True, log=lambda m: None)
+            self.assertEqual(res["survey_stats"]["tam_n"], 0)
+            flat = [str(v) for r in self.tam_section(load_workbook(Path(d) / "z.xlsx")["課後問卷統計"])
+                    for v in r if v is not None]
+            self.assertIn("尚無科技接受度作答", flat)
+
+    def test_general_feedback_tab_unaffected(self):
+        """一般回饋問卷分頁：帶 TAM 鍵的學生問卷照常彙整，不加 TAM 欄、輸出格式不變。"""
+        self.add_survey("20261201-110600_tambad.json", "GAME-E-20261201", {"pe1": 9})
+        self.assertFalse(any(k in ff.TAM_KEYS for k, _ in ff.FIELDS))
+        n, stats = ff.aggregate(self.dest, log=self.logs.append)
+        self.assertEqual((n, stats["n_v2"]), (11, 11))
+        head = [c.value for c in load_workbook(self.dest / ff.XLSX_NAME)["回覆"][1]]
+        self.assertEqual(len(head), len(ff.FIELDS))
+        self.assertFalse(any("(pe1)" in h or "(pu_mean)" in h or "PE1" in h for h in head))
+        with open(self.dest / ff.CSV_NAME, encoding="utf-8-sig", newline="") as f:
+            crow = list(csv.reader(f))
+        self.assertEqual(len(crow[0]), len(ff.FIELDS))
+        self.assertTrue(all(len(r) == len(ff.FIELDS) for r in crow[1:]))
 
 
 if __name__ == "__main__":
