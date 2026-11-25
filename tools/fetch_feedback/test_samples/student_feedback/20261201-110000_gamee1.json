@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-12-01T11:00:00+08:00",
+  "event": "GAME-E-20261201",
+  "k1": "B",
+  "k2": "C",
+  "k3": "A",
+  "a1": 5,
+  "a2": 5,
+  "a3": 5,
+  "i1": 5,
+  "i2": 5,
+  "i3": 4,
+  "s1": 5,
+  "s2": 5,
+  "s3": 5,
+  "k_open": "鎂離子可以補進晶格",
+  "a_open": "我會更珍惜花蓮的石頭",
+  "i_open": "",
+  "s_open": "想知道海水裡還有什麼離子",
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0 Safari/537.36"
+}

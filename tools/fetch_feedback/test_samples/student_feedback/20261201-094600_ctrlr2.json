@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-12-01T09:46:00+08:00",
+  "event": "ctrl-e-r2",
+  "k1": "B",
+  "k2": "C",
+  "k3": "B",
+  "a1": 3,
+  "a2": 3,
+  "a3": 3,
+  "i1": 3,
+  "i2": 3,
+  "i3": 3,
+  "s1": 3,
+  "s2": 3,
+  "s3": 3,
+  "k_open": "",
+  "a_open": "",
+  "i_open": "",
+  "s_open": "",
+  "ua": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"
+}

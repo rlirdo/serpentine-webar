@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-11-27T10:00:00+08:00",
+  "event": "HL-STATION-2026-1127-CAVIAR",
+  "k1": "B",
+  "k2": "C",
+  "k3": "A",
+  "a1": 4,
+  "a2": 4,
+  "a3": 4,
+  "i1": 4,
+  "i2": 4,
+  "i3": 4,
+  "s1": 4,
+  "s2": 4,
+  "s3": 4,
+  "k_open": "",
+  "a_open": "",
+  "i_open": "",
+  "s_open": "",
+  "ua": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"
+}

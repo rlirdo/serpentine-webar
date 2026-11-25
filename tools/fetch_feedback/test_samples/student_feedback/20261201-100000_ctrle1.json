@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-12-01T10:00:00+08:00",
+  "event": "CTRL-E-20261201",
+  "k1": "B",
+  "k2": "C",
+  "k3": "A",
+  "a1": 5,
+  "a2": 4,
+  "a3": 5,
+  "i1": 4,
+  "i2": 4,
+  "i3": 3,
+  "s1": 4,
+  "s2": 3,
+  "s3": 3,
+  "k_open": "石頭磨細後表面積變大",
+  "a_open": "原來沒人要的石頭也有用",
+  "i_open": "回家做好資源回收",
+  "s_open": "磨更細會不會更好",
+  "ua": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"
+}

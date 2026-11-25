@@ -46,8 +46,20 @@ v7（2026/11/25）：新增「研究用前後測」：feedback/test/*.json（sch
                 [--from ..] [--to ..] [--event 代碼] [--group 遊戲班|對照班] [--grade 國小|國中] [--offline]
             摘要寫入 <資料夾>\\研究用前後測_匯出結果.txt 後結束。原有問卷與遊戲前後測功能、輸出格式不變。
 
+v7.1（2026/11/25）：
+ 1. 研究專用目的資料夾：研究分頁有自己的目的資料夾（預設 DEFAULT_RESEARCH_DEST，記在 config.json 的 research_dest，
+    與 dest 互不影響；舊 config 沒有此鍵時用預設值）。研究分頁的 test_json\\、json\\（課後問卷）、xlsx／CSV／摘要檔都放這裡。
+ 2. 研究匯出納入學生版課後問卷（feedback/student.html，沿用 webar-feedback-v2 欄位、寫進 feedback/responses/）：
+    研究匯出時一併下載 responses 到 <研究資料夾>\\json\\，挑出 event 屬於研究的問卷（本次研究紀錄出現的活動代碼、
+    GAME-／CTRL- 開頭、CTRL-TEST／STUDY-GAME／STUDENT-TEST），依同樣的時間／活動／組別／學段篩選；組別與學段先看同 event
+    的研究紀錄、否則由代碼推斷（GAME→遊戲班、CTRL→對照班；第二段 E→國小、J→國中），推不出來標「未知」。
+    xlsx 加「課後問卷」「課後問卷統計」兩張工作表，另存 jamovi 用 CSV（<輸出檔名>_課後問卷_分析用.csv）。
+    問卷沒有 sid，與前後測只能做班級層級比較。研究活動代碼的問卷（含一般回饋問卷分頁）改用學生版題組標籤（STUDENT_FACETS）。
+    活動代碼規則：組別-學段-施測日期（GAME＝遊戲班、CTRL＝對照班；E＝國小、J＝國中），例 CTRL-E-20261201、GAME-J-20261203，
+    同日同組多班加 -2。CLI --research-export 介面不變。
+
 安全原則：GitHub Token 只存在記憶體，不寫入任何檔案或日誌。
-版本：7.0.0（2026/11/25）
+版本：7.1.0（2026/11/25）
 """
 from __future__ import annotations
 
@@ -67,13 +79,15 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 APP_TITLE = "撈取 GitHub 問卷資料"
-VERSION = "7.0.0"
+VERSION = "7.1.0"
 OWNER = "rlirdo"
 REPO = "serpentine-webar"
 REMOTE_DIR = "feedback/responses"
 API_URL = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/{REMOTE_DIR}"
 DEFAULT_DEST = (r"D:\01-FC東華\02-研討會及發表文章\2026_研討會發表"
                 r"\20261030-1101-環教研討會\05-回饋問卷")
+DEFAULT_RESEARCH_DEST = (r"D:\01-FC東華\01-畢業論文及實驗\2026_蛇紋石DSW實驗記錄"     # v7.1：研究資料另放
+                         r"\05-論文WebAR\研究用前後測資料")
 CSV_NAME = "回饋問卷彙整.csv"
 XLSX_NAME = "回饋問卷彙整.xlsx"
 LOG_NAME = "下載紀錄.log"
@@ -469,9 +483,66 @@ FEEDBACK_SETS = {
 }
 FEEDBACK_SETS[EVENT_CAVIAR_SR] = FEEDBACK_SETS[EVENT_CAVIAR]   # v6：高階沿用人工魚子醬回饋問卷題組
 
+# v7.1：學生版課後問卷（feedback/student.html；欄位同 webar-feedback-v2，題目改學生用語，題幹「上完這堂課後，我…」）。
+# 正解同 default。研究用活動代碼（GAME-／CTRL- 開頭、CTRL-TEST、STUDY-GAME、STUDENT-TEST）的問卷用這一組。
+BANK_STUDENT = "student"
+STUDENT_ANSWER_KEY = {"k1": "B", "k2": "C", "k3": "A"}
+STUDENT_KNOWLEDGE = [
+    ("k1", "K1 把墨玉（蛇紋石）磨成很細的微米粉，最主要的好處是什麼？"),
+    ("k2", "K2 加入花蓮外海的深層海水後，哪一種離子被設定為最適合補進蛇紋石晶格的空位？"),
+    ("k3", "K3 配製反應液時，下列哪一個做法最符合「綠色化學」？"),
+]
+STUDENT_FACETS = [
+    ("k", "環境知識", STUDENT_KNOWLEDGE, ("k_open", "K 簡答：學到的一件新事情")),
+    ("a", "環境態度", [("a1", "A1 沒有人要的石頭（像墨玉）也可能是可以再利用的資源"),
+                     ("a2", "A2 做實驗時應該先選用水，少用有毒的溶劑和強酸"),
+                     ("a3", "A3 花蓮的在地資源值得珍惜和好好利用")], ("a_open", "A 簡答：想法的改變")),
+    ("i", "行動意向", [("i1", "I1 願意做好垃圾分類和資源回收"),
+                     ("i2", "I2 願意把廢液、廢棄物分類收好"),
+                     ("i3", "I3 願意和家人、朋友分享在地資源再利用的想法")], ("i_open", "I 簡答：想做的環境行動")),
+    ("s", "科學探究", [("s1", "S1 更了解「假設」要靠證據來檢查"),
+                     ("s2", "S2 對用儀器找證據的探究方法更有興趣"),
+                     ("s3", "S3 想進一步了解或動手探究「把鎂離子補進晶格」")], ("s_open", "S 簡答：最想用實驗弄清楚的問題")),
+]
+STUDENT_STEM = "上完這堂課後，我…"
+FEEDBACK_SETS[BANK_STUDENT] = {"answer": STUDENT_ANSWER_KEY, "knowledge": STUDENT_KNOWLEDGE, "facets": STUDENT_FACETS}
+BANK_LABEL[BANK_STUDENT] = "學生版課後問卷（研究用活動代碼 GAME-／CTRL-／CTRL-TEST／STUDY-GAME／STUDENT-TEST）"
+STUDENT_DEFAULT_EVENT = "STUDENT-TEST"                       # 學生問卷單獨開、沒帶活動代碼時
+RESEARCH_DEFAULT_EVENTS = ("CTRL-TEST", "STUDY-GAME", STUDENT_DEFAULT_EVENT)
+RESEARCH_EVENT_PREFIXES = ("GAME-", "CTRL-")
+
+
+def is_research_event(event, extra_codes=()) -> bool:
+    """活動代碼是否屬於研究（不分大小寫）：GAME-／CTRL- 開頭、CTRL-TEST／STUDY-GAME／STUDENT-TEST，
+    或等於 extra_codes（本次研究紀錄出現的活動代碼）中任一個。"""
+    ev = _to_text(event).strip().upper()
+    if not ev:
+        return False
+    if ev in RESEARCH_DEFAULT_EVENTS or ev.startswith(RESEARCH_EVENT_PREFIXES):
+        return True
+    return ev in {_to_text(c).strip().upper() for c in extra_codes if _to_text(c).strip()}
+
+
+def infer_group_grade(event) -> tuple[str, str]:
+    """由活動代碼推斷（組別, 學段）：第一段 GAME→game、CTRL→control（STUDY-GAME→game）；
+    第二段 E→elem、J→junior。推不出來的部分回傳空字串。"""
+    parts = _to_text(event).strip().upper().split("-")
+    group = {"GAME": "game", "CTRL": "control"}.get(parts[0], "")
+    if parts[0] == "STUDY" and len(parts) > 1 and parts[1] == "GAME":
+        group = "game"
+    grade = {"E": "elem", "J": "junior"}.get(parts[1], "") if len(parts) > 1 else ""
+    return group, grade
+
+
+def feedback_key_for_event(event) -> str:
+    """回饋問卷題組 key：研究用活動代碼＝學生版；其他依活動題庫（找不到＝default）。"""
+    if is_research_event(event_code(event)):
+        return BANK_STUDENT
+    return bank_key_for_event(event)
+
 
 def feedback_set(event_or_key) -> dict:
-    k = event_or_key if event_or_key in FEEDBACK_SETS else bank_key_for_event(event_or_key)
+    k = event_or_key if event_or_key in FEEDBACK_SETS else feedback_key_for_event(event_or_key)
     return FEEDBACK_SETS[k]
 
 
@@ -545,7 +616,10 @@ def save_config(dest: str, game_window: int | None = None, event: str | None = N
     # 只記憶目的資料夾、遊戲重複判定分鐘數與最後選的活動；絕不寫入 token
     p = app_dir() / "config.json"
     data = {"dest": dest}
-    old = load_config() if game_window is None or event is None else {}
+    old = load_config()
+    rd = old.get("research_dest")                       # v7.1：研究目的資料夾另存，這裡原樣保留
+    if isinstance(rd, str) and rd.strip():
+        data["research_dest"] = rd.strip()
     if game_window is None:
         game_window = old.get("game_window")
     if isinstance(game_window, int) and not isinstance(game_window, bool) and 1 <= game_window <= 720:
@@ -557,6 +631,28 @@ def save_config(dest: str, game_window: int | None = None, event: str | None = N
     try:
         p.write_text(json.dumps(data, ensure_ascii=False, indent=2),
                      encoding="utf-8")
+    except OSError:
+        pass
+
+
+def research_dest_from(cfg: dict) -> str:
+    """config → 研究目的資料夾；舊 config 沒有 research_dest（或型別不對、空白）時用預設值。"""
+    v = cfg.get("research_dest") if isinstance(cfg, dict) else None
+    return v.strip() if isinstance(v, str) and v.strip() else DEFAULT_RESEARCH_DEST
+
+
+def save_research_dest(path: str) -> None:
+    """只更新 config.json 的 research_dest；dest、game_window、event 等既有鍵原樣保留（絕不寫入 token）。"""
+    p = app_dir() / "config.json"
+    data = load_config()
+    data = {k: v for k, v in data.items() if "token" not in k.lower()}
+    s = _to_text(path).strip()
+    if s:
+        data["research_dest"] = s
+    else:
+        data.pop("research_dest", None)
+    try:
+        p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     except OSError:
         pass
 
@@ -720,7 +816,7 @@ def load_records(jdir: Path, log=print) -> list[dict]:
         rec["ver"] = ver
         for k in ("schema", "submitted_at", "event", "ua"):
             rec[k] = _to_text(obj.get(k))
-        rec["_bank"] = bank_key_for_event(rec["event"])        # v5：依活動選問卷題組（不輸出成欄位）
+        rec["_bank"] = feedback_key_for_event(rec["event"])    # v5：依活動選問卷題組（v7.1：研究代碼＝學生版）
         akey = FEEDBACK_SETS[rec["_bank"]]["answer"]
         if ver in ("v2", "未知"):
             score = 0
@@ -957,6 +1053,7 @@ def write_xlsx(rows: list[dict], stats: dict, path: Path) -> None:
     st.append([])
     st.append(["面向平均＝該面向三題所有有效作答的平均。答對率＝答對數／作答數。"])
     st.append(["知識題正解與題目依「活動」欄切換題組（人工魚子醬 HL-STATION-2026-1127-CAVIAR 用晶球題組，"
+               "研究用活動代碼 GAME-／CTRL-／CTRL-TEST／STUDY-GAME／STUDENT-TEST 用學生版課後問卷題組，"
                "其他活動用 default 題組）；不同題組分開統計。"])
     for row in st.iter_rows():
         for c in row:
@@ -2243,7 +2340,8 @@ def write_analysis_csv(students: list[dict], grade: str, path: Path) -> None:
             w.writerow(["" if v is None else _csv_safe(v) if isinstance(v, str) else v for v in row])
 
 
-def write_research_xlsx(students: list[dict], dropped: list[dict], stats: dict, path: Path) -> None:
+def write_research_xlsx(students: list[dict], dropped: list[dict], stats: dict, path: Path,
+                        surveys: list[dict] | None = None, survey_stats: dict | None = None) -> None:
     wb = Workbook()
     hfont = Font(name=FONT_NAME, bold=True, color="FFFFFF")
     hfill = PatternFill("solid", fgColor="0B1F3A")
@@ -2365,6 +2463,10 @@ def write_research_xlsx(students: list[dict], dropped: list[dict], stats: dict, 
     for col, w in zip("ABCDEFGHI", (52, 16, 12, 16, 16, 16, 12, 12, 12)):
         st.column_dimensions[col].width = w
 
+    # 3.5 v7.1：學生版課後問卷（班級層級；沒有資料也建表）
+    surveys = surveys or []
+    _write_survey_sheets(wb, surveys, survey_stats or compute_survey_stats(surveys), hfont, hfill, sfill, bfont)
+
     # 4 已略過（重複）
     sheet(wb.create_sheet("已略過（重複）"),
           ["檔名", "上傳時間", "sid", "pid", "階段", "組別", "版本", "活動代碼", "保留的檔名", "原因"],
@@ -2390,6 +2492,282 @@ def write_research_xlsx(students: list[dict], dropped: list[dict], stats: dict, 
     wb.save(path)
 
 
+# ---------------------------------------------------------------- v7.1：學生版課後問卷（研究班級，feedback/responses）
+UNKNOWN_LABEL = "未知"
+SURVEY_CSV_SUFFIX = "_課後問卷_分析用.csv"
+SURVEY_LIKERT = [k for code, _, items, _ in STUDENT_FACETS if code != "k" for k, _ in items]
+SURVEY_FACETS = [(code, name, [k for k, _ in items]) for code, name, items, _ in STUDENT_FACETS if code != "k"]
+SURVEY_MEAN_COLS = {"a": "attitude_mean", "i": "action_mean", "s": "inquiry_mean"}
+SURVEY_NONE_TEXT = "尚無課後問卷"
+SURVEY_CLASS_NOTE = ("課後問卷不記名、沒有 sid，與前後測之間沒有個人層級的對應，"
+                     "只能依活動代碼（班級）與組別、學段做班級層級比較。")
+
+
+def _group_text(g: str) -> str:
+    return GROUP_LABEL.get(g, UNKNOWN_LABEL)
+
+
+def _grade_text(g: str) -> str:
+    return GRADE_LABEL.get(g, UNKNOWN_LABEL)
+
+
+def research_event_map(recs: list[dict]) -> dict:
+    """研究紀錄 → {event 小寫: (group, grade)}；同一 event 有多種值時取筆數最多者，空值不計。"""
+    cnt: dict = {}
+    for r in recs:
+        ev = _to_text(r.get("event")).strip().lower()
+        if not ev:
+            continue
+        d = cnt.setdefault(ev, {"group": {}, "grade": {}})
+        for k in ("group", "grade"):
+            if r.get(k):
+                d[k][r[k]] = d[k].get(r[k], 0) + 1
+    return {ev: tuple(max(d[k], key=d[k].get) if d[k] else "" for k in ("group", "grade"))
+            for ev, d in cnt.items()}
+
+
+def survey_group_grade(event, emap: dict) -> tuple[str, str, str]:
+    """問卷 event → (group, grade, 依據)。先看同 event 的研究紀錄，缺的部分再由活動代碼推斷；都推不出來＝空字串。"""
+    g, d = emap.get(_to_text(event).strip().lower(), ("", ""))
+    ig, idg = infer_group_grade(event)
+    basis = []
+    if g or d:
+        basis.append("研究紀錄")
+    if (not g and ig) or (not d and idg):
+        basis.append("代碼推斷")
+    g, d = g or ig, d or idg
+    if not g or not d:
+        basis.append("部分未知" if (g or d) else "無法判定")
+    return g, d, "＋".join(basis)
+
+
+def _fmean(vals: list):
+    return round(sum(vals) / len(vals), 3) if vals else ""
+
+
+def _fsd(vals: list):
+    """樣本標準差（n−1）；不足 2 筆回傳空白。"""
+    if len(vals) < 2:
+        return ""
+    m = sum(vals) / len(vals)
+    return round((sum((x - m) ** 2 for x in vals) / (len(vals) - 1)) ** 0.5, 3)
+
+
+def load_survey_records(jdir: Path, research_recs: list[dict], codes=(), log=print) -> list[dict]:
+    """讀取 json\\ 內回饋問卷，只留屬於研究的（is_research_event；codes＝本次篩選後研究紀錄的活動代碼），
+    並補上組別、學段、填答時間（台北時間）、每份三面向平均。v1 舊版問卷一律不納入。"""
+    emap = research_event_map(research_recs)
+    out = []
+    for r in load_records(jdir, log=log):
+        if r.get("ver") == "v1" or not is_research_event(r.get("event"), codes):
+            continue
+        g, d, basis = survey_group_grade(r["event"], emap)
+        s = {"file": r["file"], "event": _to_text(r["event"]).strip(), "group": g, "grade": d, "basis": basis,
+             "submitted_raw": r.get("submitted_at", ""), "submitted_at": parse_game_time(r.get("submitted_at")),
+             "ua": r.get("ua", ""), "k_score": r.get("k_score", "")}
+        for k, _ in STUDENT_KNOWLEDGE:
+            s[k] = r.get(k, "")
+            s[k + "_ok"] = r.get(k + "_ok", "") if s[k] else ""
+        for k in SURVEY_LIKERT:
+            s[k] = r.get(k, "")
+        for code, _, ks in SURVEY_FACETS:
+            s[code + "_mean"] = _fmean([s[k] for k in ks if isinstance(s[k], (int, float))])
+        for _, _, _, (ok, _) in STUDENT_FACETS:
+            s[ok] = r.get(ok, "")
+        out.append(s)
+    out.sort(key=_game_sort_key)
+    return out
+
+
+def filter_surveys(rows: list[dict], start=None, end=None, event: str = "", group: str = "",
+                   grade: str = "") -> list[dict]:
+    """與研究紀錄相同的篩選：起迄時間、活動（不分大小寫）、組別、學段（組別／學段未知者在指定篩選時不納入）。"""
+    out = filter_by_event(filter_by_time(rows, start, end), event) if event else filter_by_time(rows, start, end)
+    if group:
+        out = [r for r in out if r["group"] == group]
+    if grade:
+        out = [r for r in out if r["grade"] == grade]
+    return out
+
+
+def _survey_order_key(k: tuple):
+    gi = {"game": 0, "control": 1}.get(k[0], 2)
+    di = {"elem": 0, "junior": 1}.get(k[1], 2)
+    return (gi, di) + tuple(x.lower() for x in k[2:])
+
+
+def _survey_block(rows: list[dict]) -> dict:
+    d = {"n": len(rows), "k": {}, "items": {}, "facets": {}}
+    for k, _ in STUDENT_KNOWLEDGE:
+        oks = [r[k + "_ok"] for r in rows if r.get(k + "_ok") in (0, 1)]
+        d["k"][k] = (round(sum(oks) / len(oks), 4) if oks else "", len(oks), sum(oks))
+    ks = [r["k_score"] for r in rows if isinstance(r.get("k_score"), int)]
+    d["k_score"] = (_fmean(ks), len(ks))
+    for k in SURVEY_LIKERT:
+        v = [r[k] for r in rows if isinstance(r.get(k), (int, float))]
+        d["items"][k] = (_fmean(v), _fsd(v), len(v))
+    for code, _, _ in SURVEY_FACETS:
+        v = [r[code + "_mean"] for r in rows if isinstance(r.get(code + "_mean"), (int, float))]
+        d["facets"][code] = (_fmean(v), _fsd(v), len(v))
+    return d
+
+
+def compute_survey_stats(rows: list[dict]) -> dict:
+    """依「組別｜學段｜活動代碼」與「組別｜學段」分組：份數、知識題答對率、九題與三面向平均／標準差。
+    面向平均與標準差以「每份問卷的面向平均（該面向有效題目的平均）」計算。"""
+    by: dict = {}
+    merged: dict = {}
+    for r in rows:
+        by.setdefault((r["group"], r["grade"], r["event"]), []).append(r)
+        merged.setdefault((r["group"], r["grade"]), []).append(r)
+    order = sorted(by, key=_survey_order_key)
+    morder = sorted(merged, key=_survey_order_key)
+    count = {"game": 0, "control": 0, "": 0}
+    for r in rows:
+        count[r["group"] if r["group"] in count else ""] += 1
+    return {"n": len(rows), "by_group": count, "groups": {k: _survey_block(by[k]) for k in order}, "order": order,
+            "merged": {k: _survey_block(merged[k]) for k in morder}, "merged_order": morder,
+            "all": _survey_block(rows)}
+
+
+def _survey_key_text(k: tuple) -> str:
+    return "｜".join([_group_text(k[0]), _grade_text(k[1])] + [x or "（無活動代碼）" for x in k[2:]])
+
+
+def survey_count_text(st: dict) -> str:
+    c = st["by_group"]
+    return (f"課後問卷 {st['n']} 份（遊戲班 {c['game']}、對照班 {c['control']}"
+            + (f"、組別未知 {c['']}" if c[""] else "") + "）")
+
+
+def survey_columns() -> list[str]:
+    return (["row", "event", "group", "group_code", "grade", "submitted_at"]
+            + [x for k, _ in STUDENT_KNOWLEDGE for x in (k, k + "_correct")] + ["k_score"]
+            + SURVEY_LIKERT + [SURVEY_MEAN_COLS[c] for c, _, _ in SURVEY_FACETS] + ["file"])
+
+
+def survey_analysis_rows(rows: list[dict]) -> list[list]:
+    """jamovi 用：一列一份；缺值為 None；group／grade 推不出來＝unknown；group_code 遊戲班 1、對照班 0。"""
+    out = []
+    nz = lambda v: None if v == "" else v  # noqa: E731
+    for i, r in enumerate(rows, 1):
+        t = r["submitted_at"]
+        out.append([i, r["event"], r["group"] or "unknown", {"game": 1, "control": 0}.get(r["group"]),
+                     r["grade"] or "unknown", t.strftime("%Y-%m-%d %H:%M:%S") if t else (r["submitted_raw"] or None)]
+                    + [x for k, _ in STUDENT_KNOWLEDGE for x in (nz(r[k]), nz(r[k + "_ok"]))] + [nz(r["k_score"])]
+                    + [nz(r[k]) for k in SURVEY_LIKERT] + [nz(r[c + "_mean"]) for c, _, _ in SURVEY_FACETS]
+                    + [r["file"]])
+    return out
+
+
+def write_survey_csv(rows: list[dict], path: Path) -> None:
+    with path.open("w", encoding="utf-8-sig", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(survey_columns())
+        for row in survey_analysis_rows(rows):
+            w.writerow(["" if v is None else _csv_safe(v) if isinstance(v, str) else v for v in row])
+
+
+def _write_survey_sheets(wb, surveys: list[dict], sst: dict, hfont, hfill, sfill, bfont) -> None:
+    """xlsx「課後問卷」（一列一份）與「課後問卷統計」兩張工作表；沒有資料時寫「尚無課後問卷」。"""
+    tfmt = "yyyy-mm-dd hh:mm:ss"
+    ws = wb.create_sheet("課後問卷")
+    hdr = ["序號", "活動代碼", "組別", "學段", "填答時間"]
+    for k, lab in STUDENT_KNOWLEDGE:
+        hdr += [f"{lab.split()[0]} 作答", f"{lab.split()[0]} 對錯(1/0；正解 {STUDENT_ANSWER_KEY[k]})"]
+    hdr += ["知識答對數(0–3)"] + [lab for code, _, items, _ in STUDENT_FACETS if code != "k" for _, lab in items]
+    hdr += [f"{name}平均" for _, name, _ in SURVEY_FACETS]
+    hdr += [olab for _, _, _, (_, olab) in STUDENT_FACETS] + ["裝置摘要", "組別／學段依據", "檔名"]
+    ws.append(hdr)
+    _style_header(ws[1], hfont, hfill)
+    if not surveys:
+        ws.append([SURVEY_NONE_TEXT])
+    for n, r in enumerate(surveys, 1):
+        row = [n, r["event"], _group_text(r["group"]), _grade_text(r["grade"]),
+               _xl_time(r["submitted_at"]) if r["submitted_at"] else r["submitted_raw"]]
+        for k, _ in STUDENT_KNOWLEDGE:
+            row += [r[k], r[k + "_ok"]]
+        row += [r["k_score"]] + [r[k] for k in SURVEY_LIKERT] + [r[c + "_mean"] for c, _, _ in SURVEY_FACETS]
+        row += [r[ok] for _, _, _, (ok, _) in STUDENT_FACETS] + [ua_summary(r["ua"]), r["basis"], r["file"]]
+        ws.append(_safe_row(row))
+        for c in ws[ws.max_row]:
+            c.font = bfont
+            if c.column == 5 and isinstance(c.value, datetime):
+                c.number_format = tfmt
+            if c.column >= len(hdr) - 6 and c.column <= len(hdr) - 3:
+                c.alignment = Alignment(wrap_text=True, vertical="top")
+        _as_text(ws[ws.max_row])
+    for i, h in enumerate(hdr, 1):
+        w = 6 if i == 1 else 20 if i == 2 else 19 if i == 5 else 36 if "簡答" in h else 30 if i == len(hdr) else 12
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "C2"
+
+    st = wb.create_sheet("課後問卷統計")
+    hdr_rows = []
+
+    def h(*vals):
+        st.append(list(vals))
+        hdr_rows.append(st.max_row)
+
+    cols = ["份數"] + [f"{lab.split()[0]} 答對率" for _, lab in STUDENT_KNOWLEDGE] + ["知識答對數平均"]
+    for code, name, items, _ in STUDENT_FACETS:
+        if code == "k":
+            continue
+        for _, lab in items:
+            cols += [f"{lab.split()[0]} 平均", f"{lab.split()[0]} 標準差"]
+    cols += [x for _, name, _ in SURVEY_FACETS for x in (f"{name}平均", f"{name}標準差")]
+
+    def block_row(label, d):
+        row = [label, d["n"]] + [d["k"][k][0] for k, _ in STUDENT_KNOWLEDGE] + [d["k_score"][0]]
+        for k in SURVEY_LIKERT:
+            row += list(d["items"][k][:2])
+        for code, _, _ in SURVEY_FACETS:
+            row += list(d["facets"][code][:2])
+        st.append(row)
+        for i in range(3, 6):
+            if isinstance(st.cell(st.max_row, i).value, float):
+                st.cell(st.max_row, i).number_format = "0.0%"
+
+    h("項目", "內容")
+    st.append(["說明", SURVEY_CLASS_NOTE])
+    st.append(["份數", survey_count_text(sst)])
+    st.append(["題組", BANK_LABEL[BANK_STUDENT] + f"；題幹「{STUDENT_STEM}」"])
+    st.append(["計算方式", "答對率＝答對數／作答數；平均與標準差（樣本標準差 n−1，不足 2 份留白）只計有效作答；"
+                          "面向平均與標準差以每份問卷的面向平均（該面向三題中有效題目的平均）計算。"])
+    st.append([])
+    if not surveys:
+        st.append([SURVEY_NONE_TEXT])
+    else:
+        h("組別｜學段｜活動代碼", *cols)
+        for k in sst["order"]:
+            block_row(_survey_key_text(k), sst["groups"][k])
+        st.append([])
+        h("組別｜學段（合併各班）", *cols)
+        for k in sst["merged_order"]:
+            block_row(_survey_key_text(k), sst["merged"][k])
+        block_row("全部", sst["all"])
+    st.append([])
+    h("題號", "題目（學生版課後問卷）", "正解")
+    for code, name, items, (ok, olab) in STUDENT_FACETS:
+        for k, lab in items:
+            st.append([k, f"【{name}】{lab}", STUDENT_ANSWER_KEY.get(k, "（1–5 量表）")])
+        st.append([ok, f"【{name}】{olab}", "（簡答）"])
+    for row in st.iter_rows():
+        for c in row:
+            c.font = bfont
+            if isinstance(c.value, str):
+                c.value = _csv_safe(c.value)
+    for rno in hdr_rows:
+        for c in st[rno]:
+            c.font, c.fill = hfont, (hfill if rno == hdr_rows[0] else sfill)
+            c.alignment = Alignment(wrap_text=True, vertical="center")
+    st.column_dimensions["A"].width = 40
+    st.column_dimensions["B"].width = 14
+    for i in range(3, len(cols) + 3):
+        st.column_dimensions[get_column_letter(i)].width = 11
+    st.freeze_panes = "B2"
+
+
 def research_default_name(start: datetime | None, end: datetime | None, now: datetime | None = None) -> str:
     """預設檔名：研究用前後測_<起>至<迄>_匯出<時間>.xlsx（未設區間＝全部）。"""
     now = now or datetime.now()
@@ -2401,6 +2779,10 @@ def research_default_name(start: datetime | None, end: datetime | None, now: dat
 
 def analysis_csv_paths(xlsx_path: Path) -> dict:
     return {g: xlsx_path.with_name(f"{xlsx_path.stem}_分析用_{g}.csv") for g, _ in ANALYSIS_GRADES}
+
+
+def survey_csv_path(xlsx_path: Path) -> Path:
+    return xlsx_path.with_name(f"{xlsx_path.stem}{SURVEY_CSV_SUFFIX}")
 
 
 def run_research_export(dest: Path, xlsx_path: Path, start: datetime | None = None,
@@ -2417,8 +2799,9 @@ def run_research_export(dest: Path, xlsx_path: Path, start: datetime | None = No
     except ValueError as e:
         raise FetchError(str(e))
     remote_n = ok = bad = None
+    sremote_n = sok = None
     if offline:
-        log("離線模式：不連網，只讀本機 test_json")
+        log("離線模式：不連網，只讀本機 test_json（前後測）與 json（課後問卷）")
     else:
         log("連線 GitHub 查詢研究用前後測清單（feedback/test）…")
         remote = list_remote(token, session, api_url=TEST_API_URL)
@@ -2429,6 +2812,15 @@ def run_research_export(dest: Path, xlsx_path: Path, start: datetime | None = No
             log(f"GitHub 上共有 {remote_n} 筆研究紀錄")
         ok, bad = download_new(dest, remote, token, log=log, session=session, subdir=TEST_JSON_SUBDIR)
         log(f"本次新下載 {ok} 筆" + (f"，壞檔 {bad} 筆" if bad else ""))
+        # v7.1：學生版課後問卷與成人版共用 feedback/responses；下載到研究資料夾的 json\（失敗不影響前後測匯出）
+        log("連線 GitHub 查詢回饋問卷清單（feedback/responses，挑出學生版課後問卷）…")
+        try:
+            sremote = list_remote(token, session, api_url=API_URL)
+            sremote_n = len(sremote)
+            sok, sbad = download_new(dest, sremote, token, log=log, session=session, subdir=JSON_SUBDIR)
+            log(f"回饋問卷 GitHub 上 {sremote_n} 筆、本次新下載 {sok} 筆" + (f"，壞檔 {sbad} 筆" if sbad else ""))
+        except FetchError as e:
+            log(f"⚠ 回饋問卷下載失敗，改用本機 json 既有檔案：{e}")
     recs = load_research_records(dest / TEST_JSON_SUBDIR, log=log)
     if not recs:
         log("尚無研究資料：本機 test_json 沒有任何紀錄，仍輸出空白格式的 Excel。")
@@ -2442,18 +2834,26 @@ def run_research_export(dest: Path, xlsx_path: Path, start: datetime | None = No
     meta = {"range_text": _range_text(_to_tpe(start), _to_tpe(end)), "filters_text": filt,
             "generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     stats = compute_research_stats(len(recs), in_range, kept, dropped, students, meta)
+    # v7.1：課後問卷（研究活動代碼＋同樣的時間／活動／組別／學段篩選）
+    codes = {r["event"] for r in in_range if r.get("event")}
+    surveys = filter_surveys(load_survey_records(dest / JSON_SUBDIR, recs, codes, log=lambda m: None),
+                             start, end, ev, grp, grd)
+    sst = compute_survey_stats(surveys)
     xlsx_path.parent.mkdir(parents=True, exist_ok=True)
     csvs = analysis_csv_paths(xlsx_path)
+    scsv = survey_csv_path(xlsx_path)
     try:
-        write_research_xlsx(students, dropped, stats, xlsx_path)
+        write_research_xlsx(students, dropped, stats, xlsx_path, surveys, sst)
         for g, p in csvs.items():
             write_analysis_csv(students, g, p)
+        write_survey_csv(surveys, scsv)
     except PermissionError as e:
         raise FetchError(f"無法寫入 {Path(e.filename or xlsx_path).name}，可能正在 Excel 中開啟，請關閉後再試。")
     res = {"remote": remote_n, "new": ok, "bad": bad, "local": len(recs), "in_range": len(in_range),
            "kept": len(kept), "dropped": len(dropped), "students": stats["students"],
            "complete": stats["complete"], "path": str(xlsx_path), "csv": {g: str(p) for g, p in csvs.items()},
-           "stats": stats}
+           "stats": stats, "survey_remote": sremote_n, "survey_new": sok, "surveys": len(surveys),
+           "survey_stats": sst, "survey_csv": str(scsv)}
     for line in research_summary_lines(res):
         log(line)
     return res
@@ -2476,9 +2876,21 @@ def research_summary_lines(res: dict) -> list[str]:
         mm = lambda p: "—" if p[0] is None else f"{p[0]}"  # noqa: E731
         out.append(f"　{_grp_text(k)}：{d['students']} 人、完成 {d['complete']} 人；前測平均 {mm(d['pre_mean'])}／8、"
                    f"後測平均 {mm(d['post_mean'])}／8、平均進步 {mm(d['gain_mean'])}")
+    sst = res.get("survey_stats")
+    if sst is not None:
+        if res.get("survey_remote") is not None:
+            out.append(f"回饋問卷 GitHub 上 {res['survey_remote']} 筆、本次新下載 {res['survey_new']} 筆（含成人版，已排除）")
+        out.append(survey_count_text(sst) + "；與前後測無個人層級對應，只做班級層級比較")
+        for k in sst["order"]:
+            d = sst["groups"][k]
+            fm = "、".join(f"{name} {d['facets'][c][0] if d['facets'][c][0] != '' else '—'}" for c, name, _ in SURVEY_FACETS)
+            out.append(f"　{_survey_key_text(k)}：{d['n']} 份；知識答對數平均 "
+                       f"{d['k_score'][0] if d['k_score'][0] != '' else '—'}／3；{fm}")
     out.append(f"輸出：{res['path']}")
     for g, p in res.get("csv", {}).items():
         out.append(f"CSV（{GRADE_LABEL[g]}）：{p}")
+    if res.get("survey_csv"):
+        out.append(f"CSV（課後問卷）：{res['survey_csv']}")
     return out
 
 
@@ -2542,8 +2954,8 @@ def main() -> None:
 
     root = tk.Tk()
     root.title(f"{APP_TITLE}  v{VERSION}")
-    root.geometry("780x780")
-    root.minsize(660, 690)
+    root.geometry("780x840")
+    root.minsize(660, 740)
     f_norm = (FONT_NAME, 11)
     f_bold = (FONT_NAME, 12, "bold")
     style = ttk.Style()
@@ -2675,6 +3087,7 @@ def main() -> None:
     revent_var = tk.StringVar(value=EVENT_ALL)
     rgroup_var = tk.StringVar(value=EVENT_ALL)
     rgrade_var = tk.StringVar(value=EVENT_ALL)
+    rdest_var = tk.StringVar(value=research_dest_from(cfg))
     research_status_var = tk.StringVar()
     ttk.Label(rf, text="起").grid(row=0, column=0, sticky="w")
     ttk.Entry(rf, textvariable=rfrom_var, font=f_norm, width=18).grid(row=0, column=1, sticky="ew", padx=6)
@@ -2705,8 +3118,34 @@ def main() -> None:
     ttk.Label(rgrow, text="版本").pack(side="left", padx=(14, 6))
     ttk.Combobox(rgrow, textvariable=rgrade_var, width=6, font=f_norm, state="readonly",
                  values=[EVENT_ALL, "國小", "國中"]).pack(side="left")
+    # v7.1：研究專用目的資料夾（與上方研討會回饋問卷的目的資料夾分開；記在 config.json 的 research_dest）
+    ttk.Label(rf, text="研究資料夾").grid(row=5, column=0, sticky="w", pady=(8, 0))
+    rdrow = ttk.Frame(rf)
+    rdrow.grid(row=5, column=1, columnspan=5, sticky="ew", padx=6, pady=(8, 0))
+    rdrow.columnconfigure(0, weight=1)
+    ttk.Entry(rdrow, textvariable=rdest_var, font=f_norm).grid(row=0, column=0, sticky="ew")
+
+    def browse_research():
+        d = filedialog.askdirectory(initialdir=rdest_var.get() or str(Path.home()))
+        if d:
+            rdest_var.set(os.path.normpath(d))
+            save_research_dest(rdest_var.get())
+            refresh_count()
+
+    def open_research_dir():
+        d = Path(rdest_var.get().strip() or DEFAULT_RESEARCH_DEST)
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            os.startfile(str(d))
+        except OSError as e:
+            messagebox.showwarning(APP_TITLE, f"無法開啟資料夾：{e}")
+
+    ttk.Button(rdrow, text="瀏覽…", command=browse_research).grid(row=0, column=1, padx=(6, 0))
+    ttk.Button(rdrow, text="開啟", command=open_research_dir).grid(row=0, column=2, padx=(6, 0))
+    ttk.Label(rf, text="前後測（test_json）、學生版課後問卷（json）、匯出的 Excel／CSV／摘要都放這裡；與上方回饋問卷資料夾分開。",
+              foreground="#64748B").grid(row=6, column=0, columnspan=6, sticky="w", pady=(2, 0))
     rbrow = ttk.Frame(rf)
-    rbrow.grid(row=4, column=0, columnspan=6, sticky="w", pady=(8, 0))
+    rbrow.grid(row=7, column=0, columnspan=6, sticky="w", pady=(8, 0))
     btn_res = ttk.Button(rbrow, text="下載並匯出研究用 Excel…", style="Big.TButton")
     btn_res.pack(side="left")
     ttk.Label(rbrow, textvariable=research_status_var, font=f_bold, foreground="#2E7D5B").pack(side="left", padx=12)
@@ -2726,7 +3165,7 @@ def main() -> None:
         gdir = Path(dest_var.get()) / GAME_JSON_SUBDIR
         gn = len(list(gdir.glob("*.json"))) if gdir.is_dir() else 0
         game_status_var.set(f"遊戲紀錄本機 {gn} 筆")
-        tdir = Path(dest_var.get()) / TEST_JSON_SUBDIR
+        tdir = Path(rdest_var.get().strip() or DEFAULT_RESEARCH_DEST) / TEST_JSON_SUBDIR
         tn = len(list(tdir.glob("*.json"))) if tdir.is_dir() else 0
         research_status_var.set(f"研究資料本機 {tn} 筆" if tn else "研究資料本機 0 筆（尚無研究資料）")
 
@@ -2753,16 +3192,27 @@ def main() -> None:
             q.put(("error", f"發生未預期錯誤：{type(e).__name__}: {e}"))
 
     def research_worker(dest: Path, xlsx: Path, start, end, token: str, event: str, group: str, grade: str):
+        # v7.1：研究分頁的日誌與摘要檔寫到研究目的資料夾
+        lines = [f"{APP_TITLE} v{VERSION}　{datetime.now():%Y-%m-%d %H:%M:%S}　研究用前後測匯出（視窗）"]
+
         def log(m):
-            q.put(("log", m))
+            lines.append(m)
+            q.put(("rlog", m))
         try:
             res = run_research_export(dest, xlsx, start, end, token or None, log=log, event=event,
                                       group=group, grade=grade)
+            lines.append("匯出完成")
             q.put(("research_done", res))
         except FetchError as e:
-            q.put(("error", str(e)))
+            lines.append(f"✖ 匯出失敗：{e}")
+            q.put(("rerror", str(e)))
         except Exception as e:  # 不得崩潰
-            q.put(("error", f"發生未預期錯誤：{type(e).__name__}: {e}"))
+            lines.append(f"✖ 匯出失敗：{type(e).__name__}: {e}")
+            q.put(("rerror", f"發生未預期錯誤：{type(e).__name__}: {e}"))
+        try:
+            (dest / RESEARCH_SUMMARY_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        except OSError:
+            pass
 
     def set_busy(busy: bool):
         st = "disabled" if busy else "normal"
@@ -2778,9 +3228,15 @@ def main() -> None:
             while True:
                 kind, payload = q.get_nowait()
                 dest = Path(dest_var.get())
+                rdest = Path(rdest_var.get().strip() or DEFAULT_RESEARCH_DEST)
                 if kind == "log":
                     append_log_file(dest, ui_log(payload))
                     continue
+                if kind == "rlog":
+                    append_log_file(rdest, ui_log(payload))
+                    continue
+                if kind == "rerror":
+                    dest = rdest
                 prog.stop()
                 prog.configure(mode="determinate", value=100 if kind in ("done", "game_done", "research_done") else 0)
                 set_busy(False)
@@ -2804,9 +3260,12 @@ def main() -> None:
                     refresh_count()
                     head = "尚無研究資料（GitHub 上還沒有 feedback/test）。已輸出空白格式的檔案：\n" \
                         if payload["local"] == 0 else "匯出完成：\n"
+                    sst = payload.get("survey_stats")
+                    stext = ("\n" + survey_count_text(sst) + "（只能做班級層級比較）") if sst else ""
                     if messagebox.askyesno(APP_TITLE, head + payload["path"]
                                            + f"\n\n學生 {payload['students']} 人（完成前後測 {payload['complete']} 人）、"
-                                           f"略過重複 {payload['dropped']} 筆；分析用 CSV 已另存於同資料夾。"
+                                           f"略過重複 {payload['dropped']} 筆；" + stext
+                                           + "\n分析用 CSV（國小、國中、課後問卷）已另存於同資料夾。"
                                            "\n\n要現在開啟 Excel 嗎？"):
                         try:
                             os.startfile(payload["path"])
@@ -2870,9 +3329,9 @@ def main() -> None:
                                token_var.get().strip(), ev), daemon=True).start()
 
     def on_research():
-        d = dest_var.get().strip()
+        d = rdest_var.get().strip()                    # v7.1：研究專用目的資料夾
         if not d:
-            messagebox.showinfo(APP_TITLE, "請先選擇目的資料夾。")
+            messagebox.showinfo(APP_TITLE, "請先選擇研究資料夾。")
             return
         try:
             start = parse_user_time(rfrom_var.get())
@@ -2897,8 +3356,8 @@ def main() -> None:
         if not out:
             return
         ev = event_code(revent_var.get()) or EVENT_ALL
-        save_config(d)
-        ui_log(f"研究用前後測匯出：區間 {_range_text(start, end)}；活動 {ev}；"
+        save_research_dest(d)
+        ui_log(f"研究用前後測匯出（研究資料夾 {d}）：區間 {_range_text(start, end)}；活動 {ev}；"
                f"組別 {GROUP_LABEL.get(grp, EVENT_ALL)}；版本 {GRADE_LABEL.get(grd, EVENT_ALL)}")
         set_busy(True)
         threading.Thread(target=research_worker,
@@ -2918,6 +3377,8 @@ def main() -> None:
     btn_game.configure(command=on_game)
     btn_res.configure(command=on_research)
     ui_log("研究用前後測（v7）：切到下方「研究用前後測」分頁，可依時間、活動、組別、版本篩選後匯出 Excel 與分析用 CSV。")
+    ui_log("v7.1：研究分頁有自己的「研究資料夾」；匯出時一併下載學生版課後問卷（活動代碼 GAME-／CTRL-…），"
+           "加「課後問卷」「課後問卷統計」工作表與課後問卷 CSV。")
     ui_log("按「下載新問卷」從 GitHub 撈取回覆；只下載本機沒有的新檔。")
     ui_log("遊戲前後測：設定起迄時間、重複判定分鐘數與活動後，按「下載並匯出 Excel…」。")
     ui_log("題庫與問卷正解依紀錄的活動自動切換（人工魚子醬 HL-STATION-2026-1127-CAVIAR 用晶球題庫；"

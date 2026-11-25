@@ -1,0 +1,22 @@
+{
+  "schema": "webar-feedback-v2",
+  "submitted_at": "2026-10-31T10:00:00+08:00",
+  "event": "SEET2026-A155-07",
+  "k1": "B",
+  "k2": "C",
+  "k3": "A",
+  "a1": 5,
+  "a2": 5,
+  "a3": 5,
+  "i1": 5,
+  "i2": 5,
+  "i3": 5,
+  "s1": 5,
+  "s2": 5,
+  "s3": 5,
+  "k_open": "成人版問卷",
+  "a_open": "",
+  "i_open": "",
+  "s_open": "",
+  "ua": "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1"
+}

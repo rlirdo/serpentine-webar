@@ -13,7 +13,10 @@ v5.0.0：TestCaviar 涵蓋人工魚子醬題庫（逐字依規格）、依 event
 v6：新增 TestCaviarSR（高階 -SR 題號對應、程度顯示、活動合併篩選、org 拆欄）；題庫另與 caviar/tools/out/bank_v2.json 全文比對。
 v7：新增 TestResearch（研究用前後測 feedback/test：樣本 test_samples/research 為中繼 Code.gs v5 清理後的實際紀錄＋重複上傳／
 只有前測／缺獨立前測檔；sid＋階段去重留最早、sid 配對、態度題不計分、篩選、xlsx 六工作表＋分析用 CSV、--research-export、
-404＝尚無研究資料、只下載到 test_json；題庫與 js/content.js、js/study.js、Code.gs 一致）。"""
+404＝尚無研究資料、只下載到 test_json；題庫與 js/content.js、js/study.js、Code.gs 一致）。
+v7.1：新增 TestStudentSurvey（研究資料夾 research_dest 設定與舊 config 相容、學生版課後問卷挑選與成人版排除、
+由研究紀錄／代碼推斷組別學段、統計數字、空資料、下載到 json；樣本 test_samples/student_feedback 為虛構作答）。
+研究匯出另查 feedback/responses，故 v7 兩個 mock 測試改為檢查第一個／最後一個請求、補一個空清單回應；xlsx 工作表加兩張。"""
 import re
 import csv
 import json
@@ -578,7 +581,7 @@ class TestGameV2(unittest.TestCase):
         return ff.load_game_records(self.jdir, log=self.logs.append)
 
     def test_constants(self):
-        self.assertEqual(ff.VERSION, "7.0.0")   # v7.0.0：研究用前後測（feedback/test）
+        self.assertEqual(ff.VERSION, "7.1.0")   # v7.1.0：研究資料夾＋學生版課後問卷
         self.assertEqual(ff.GAME_SCHEMAS, ("webar-game-v1", "webar-game-v2"))
         self.assertEqual(ff.MODE_LABEL["drive"], "方向盤版")
         self.assertIn(HL, ff.EVENT_PRESETS)
@@ -1304,7 +1307,8 @@ class TestResearch(unittest.TestCase):
         res = ff.run_research_export(self.dest, out, offline=True, log=self.logs.append)
         self.assertEqual((res["local"], res["kept"], res["dropped"], res["students"], res["complete"]), (9, 8, 1, 5, 4))
         wb = load_workbook(out)
-        self.assertEqual(wb.sheetnames, ["學生彙整", "分析用_國小elem", "分析用_國中junior", "統計", "已略過（重複）", "題目對照"])
+        self.assertEqual(wb.sheetnames, ["學生彙整", "分析用_國小elem", "分析用_國中junior", "統計",
+                                         "課後問卷", "課後問卷統計", "已略過（重複）", "題目對照"])   # v7.1 加兩張
         ws = wb["學生彙整"]
         hdr = [c.value for c in ws[1]]
         for col in ("活動代碼", "組別", "版本", "pid", "sid", "前測時間", "後測時間", "作答模式", "前測Q10 選項文字",
@@ -1373,7 +1377,9 @@ class TestResearch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "x.xlsx"
             res = ff.run_research_export(Path(d), out, session=s, log=self.logs.append)
-            self.assertIn("feedback/test", s.get.call_args[0][0])
+            urls = [c[0][0] for c in s.get.call_args_list]             # v7.1：另查 feedback/responses（課後問卷）
+            self.assertIn("feedback/test", urls[0])
+            self.assertIn("feedback/responses", urls[-1])
             self.assertEqual((res["remote"], res["local"], res["students"]), (0, 0, 0))
             self.assertTrue(any("尚無研究資料" in m for m in self.logs))
             self.assertTrue(out.exists())
@@ -1384,12 +1390,15 @@ class TestResearch(unittest.TestCase):
         listing.json.return_value = [{"type": "file", "name": "20261205-090000_pre_newnew.json", "download_url": "u1"}]
         good = mock.Mock(status_code=200, headers={}, content=json.dumps(
             rrec("pre", "2026-12-05T09:00:00+08:00", "n" * 12), ensure_ascii=False).encode("utf-8"))
-        s = mock.Mock(get=mock.Mock(side_effect=[listing, good]))
+        empty = mock.Mock(status_code=200, headers={})              # v7.1：feedback/responses 清單（空）
+        empty.json.return_value = []
+        s = mock.Mock(get=mock.Mock(side_effect=[listing, good, empty]))
         with tempfile.TemporaryDirectory() as d:
             res = ff.run_research_export(Path(d), Path(d) / "y.xlsx", session=s, log=self.logs.append)
             self.assertEqual((res["remote"], res["new"], res["students"]), (1, 1, 1))
             self.assertTrue((Path(d) / "test_json" / "20261205-090000_pre_newnew.json").exists())
             self.assertFalse((Path(d) / ff.GAME_JSON_SUBDIR).exists())
+            self.assertFalse((Path(d) / "json" / "20261205-090000_pre_newnew.json").exists())
 
     def test_game_export_ignores_test_json(self):
         """原有遊戲前後測只讀 game_json：test_json 內的研究紀錄不會混進去。"""
@@ -1408,6 +1417,243 @@ class TestResearch(unittest.TestCase):
         self.assertEqual(ff.research_default_name(ff.parse_user_time("2026-12-01 08:00"),
                                                   ff.parse_user_time("2026-12-01 17:00", True), now),
                          "研究用前後測_20261201-0800至20261201-1700_匯出20261201-1805.xlsx")
+
+
+# ---------------------------------------------------------------- v7.1：研究資料夾＋學生版課後問卷
+STUDENT_SAMPLES = Path(__file__).resolve().parent / "test_samples" / "student_feedback"   # 虛構作答，簡答不含姓名
+
+
+class TestStudentSurvey(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dest = Path(self.tmp.name)
+        for sub, src in ((ff.TEST_JSON_SUBDIR, SAMPLES), (ff.JSON_SUBDIR, STUDENT_SAMPLES)):
+            (self.dest / sub).mkdir()
+            for p in src.glob("*.json"):
+                (self.dest / sub / p.name).write_bytes(p.read_bytes())
+        self.logs = []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def surveys(self, codes=None, **kw):
+        recs = ff.load_research_records(self.dest / ff.TEST_JSON_SUBDIR, log=self.logs.append)
+        if codes is None:
+            codes = {r["event"] for r in recs}
+        rows = ff.load_survey_records(self.dest / ff.JSON_SUBDIR, recs, codes, log=self.logs.append)
+        return {r["file"].split("_")[1][:6]: r for r in ff.filter_surveys(rows, **kw)}
+
+    # -- 研究資料夾設定
+    def test_research_dest_config_and_old_config(self):
+        self.assertEqual(ff.DEFAULT_RESEARCH_DEST,
+                         r"D:\01-FC東華\01-畢業論文及實驗\2026_蛇紋石DSW實驗記錄\05-論文WebAR\研究用前後測資料")
+        with mock.patch.object(ff, "app_dir", return_value=self.dest):
+            cfgp = self.dest / "config.json"
+            cfgp.write_text(json.dumps({"dest": "D:\\old", "game_window": 20}), "utf-8")   # 舊 config（v7.0.0）
+            self.assertEqual(ff.research_dest_from(ff.load_config()), ff.DEFAULT_RESEARCH_DEST)
+            ff.save_research_dest("E:\\研究")
+            self.assertEqual(ff.load_config(), {"dest": "D:\\old", "game_window": 20, "research_dest": "E:\\研究"})
+            ff.save_config("D:\\new")                                   # 回饋問卷分頁存檔不影響研究資料夾
+            self.assertEqual(ff.load_config(), {"dest": "D:\\new", "game_window": 20, "research_dest": "E:\\研究"})
+            ff.save_config("D:\\new2", 30, "SEET2026-A155-07")
+            cfg = ff.load_config()
+            self.assertEqual((cfg["dest"], cfg["research_dest"]), ("D:\\new2", "E:\\研究"))
+            self.assertEqual(ff.research_dest_from(cfg), "E:\\研究")
+            self.assertFalse(any("token" in k.lower() for k in cfg))
+            self.assertNotIn("token", cfgp.read_text("utf-8").lower())
+        self.assertEqual(ff.research_dest_from({"research_dest": "  "}), ff.DEFAULT_RESEARCH_DEST)
+        self.assertEqual(ff.research_dest_from({"research_dest": 5}), ff.DEFAULT_RESEARCH_DEST)
+
+    # -- 挑選與排除
+    def test_select_research_surveys_excludes_adult(self):
+        self.assertTrue(ff.is_research_event("CTRL-E-20261201"))
+        self.assertTrue(ff.is_research_event("game-j-20261203-2"))
+        self.assertTrue(ff.is_research_event(" student-test "))
+        self.assertTrue(ff.is_research_event("STUDY-GAME"))
+        self.assertTrue(ff.is_research_event("STUDY-E-R2", {"study-e-r2"}))
+        self.assertFalse(ff.is_research_event("STUDY-E-R2"))
+        for ev in ("SEET2026-A155-07", "HL-STATION-2026-1127-CAVIAR", "HL-STATION-2026-1127", ""):
+            self.assertFalse(ff.is_research_event(ev, {"CTRL-E-R2"}), ev)
+        by = self.surveys()
+        self.assertEqual(set(by), {"ctrle1", "ctrle2", "gamee1", "gamee2", "gamej1", "studye", "ctrlr2", "stutst"})
+        self.assertNotIn("seet01", by)
+        self.assertNotIn("cav001", by)
+        # 不在研究紀錄、也不符合命名規則的代碼不納入
+        self.assertNotIn("studye", self.surveys(codes=set()))
+
+    def test_filters_time_event_group_grade(self):
+        self.assertEqual(set(self.surveys(group="game")), {"gamee1", "gamee2", "gamej1", "studye"})
+        self.assertEqual(set(self.surveys(group="control", grade="elem")), {"ctrle1", "ctrle2", "ctrlr2"})
+        self.assertEqual(set(self.surveys(grade="junior")), {"gamej1"})
+        self.assertEqual(set(self.surveys(event="ctrl-e-20261201")), {"ctrle1", "ctrle2"})   # 不分大小寫
+        t = self.surveys(start=ff.parse_user_time("2026-12-01 10:00"), end=ff.parse_user_time("2026-12-01 11:00", True))
+        self.assertEqual(set(t), {"ctrle1", "ctrle2", "gamee1"})
+
+    # -- 組別／學段判定
+    def test_group_grade_from_records_and_code(self):
+        self.assertEqual(ff.infer_group_grade("CTRL-E-20261201"), ("control", "elem"))
+        self.assertEqual(ff.infer_group_grade("game-j-20261203-2"), ("game", "junior"))
+        self.assertEqual(ff.infer_group_grade("STUDY-GAME"), ("game", ""))
+        self.assertEqual(ff.infer_group_grade("CTRL-TEST"), ("control", ""))
+        self.assertEqual(ff.infer_group_grade("STUDENT-TEST"), ("", ""))
+        by = self.surveys()
+        s = by["studye"]                         # 代碼推不出組別 → 依研究紀錄 STUDY-E-R2（遊戲班國小）
+        self.assertEqual((s["group"], s["grade"], s["basis"]), ("game", "elem", "研究紀錄"))
+        c = by["ctrlr2"]                         # 小寫代碼也對到研究紀錄 CTRL-E-R2
+        self.assertEqual((c["group"], c["grade"], c["basis"]), ("control", "elem", "研究紀錄"))
+        g = by["gamej1"]
+        self.assertEqual((g["group"], g["grade"], g["basis"]), ("game", "junior", "代碼推斷"))
+        u = by["stutst"]
+        self.assertEqual((u["group"], u["grade"], u["basis"]), ("", "", "無法判定"))
+        # 研究紀錄優先於代碼：同 event 的研究紀錄寫遊戲班國中時以紀錄為準
+        emap = ff.research_event_map([{"event": "CTRL-E-X", "group": "game", "grade": "junior"}])
+        self.assertEqual(ff.survey_group_grade("ctrl-e-x", emap)[:2], ("game", "junior"))
+        self.assertEqual(ff.survey_group_grade("CTRL-TEST", {}), ("control", "", "代碼推斷＋部分未知"))
+
+    def test_student_feedback_set_labels(self):
+        fs = ff.feedback_set("CTRL-E-20261201")
+        self.assertIs(fs, ff.FEEDBACK_SETS[ff.BANK_STUDENT])
+        self.assertEqual(fs["answer"], {"k1": "B", "k2": "C", "k3": "A"})
+        self.assertIn("磨成很細的微米粉", dict(fs["knowledge"])["k1"])
+        self.assertIs(ff.feedback_set("STUDENT-TEST"), fs)
+        self.assertIs(ff.feedback_set("SEET2026-A155-07"), ff.FEEDBACK_SETS[ff.BANK_DEFAULT])     # 既有活動不變
+        self.assertIs(ff.feedback_set("HL-STATION-2026-1127-CAVIAR"), ff.FEEDBACK_SETS[ff.EVENT_CAVIAR])
+        # 一般回饋問卷分頁：研究代碼用學生版題組、成人版維持 default
+        rows = ff.load_records(self.dest / ff.JSON_SUBDIR, log=self.logs.append)
+        bank = {r["file"].split("_")[1][:6]: r["_bank"] for r in rows}
+        self.assertEqual((bank["ctrle1"], bank["stutst"], bank["seet01"], bank["cav001"]),
+                         (ff.BANK_STUDENT, ff.BANK_STUDENT, ff.BANK_DEFAULT, ff.EVENT_CAVIAR))
+        stats = ff.compute_stats(rows)
+        # 一般分頁不讀研究紀錄：只依命名規則判定，STUDY-E-R2 不符規則仍歸 default（研究匯出時才依研究紀錄納入）
+        self.assertEqual(bank["studye"], ff.BANK_DEFAULT)
+        self.assertEqual(stats["groups"][ff.BANK_STUDENT]["n"], 7)
+        self.assertEqual(stats["groups"][ff.BANK_DEFAULT]["n"], 2)
+        ff.aggregate(self.dest, log=self.logs.append)
+        head = [c.value for c in load_workbook(self.dest / ff.XLSX_NAME)["回覆"][1]]
+        self.assertIn("K1（依活動題目）(k1)", head)
+
+    # -- 統計
+    def test_survey_stats_numbers(self):
+        rows = list(self.surveys().values())
+        sst = ff.compute_survey_stats(rows)
+        self.assertEqual(sst["n"], 8)
+        self.assertEqual(sst["by_group"], {"game": 4, "control": 3, "": 1})
+        self.assertEqual(sst["order"][0], ("game", "elem", "GAME-E-20261201"))
+        self.assertEqual(sst["order"][-1], ("", "", "STUDENT-TEST"))
+        d = sst["groups"][("control", "elem", "CTRL-E-20261201")]
+        self.assertEqual(d["n"], 2)
+        self.assertEqual((d["k"]["k1"][0], d["k"]["k2"][0], d["k"]["k3"][0]), (0.5, 1.0, 1.0))
+        self.assertEqual(d["k_score"], (2.5, 2))
+        self.assertEqual(d["items"]["a1"], (4.5, 0.707, 2))
+        self.assertEqual(d["items"]["s3"][:2], (2.5, 0.707))
+        self.assertAlmostEqual(d["facets"]["a"][0], (14 / 3 + 4) / 2, delta=0.002)
+        self.assertEqual(d["facets"]["a"][2], 2)
+        one = sst["groups"][("game", "junior", "GAME-J-20261203")]
+        self.assertEqual((one["n"], one["items"]["a1"]), (1, (4, "", 1)))   # 1 份：標準差留白
+        m = sst["merged"][("control", "elem")]                              # 合併 CTRL-E-20261201＋ctrl-e-r2
+        self.assertEqual((m["n"], m["k"]["k3"][0]), (3, round(2 / 3, 4)))
+        self.assertEqual(sst["all"]["n"], 8)
+        txt = ff.survey_count_text(sst)
+        self.assertEqual(txt, "課後問卷 8 份（遊戲班 4、對照班 3、組別未知 1）")
+
+    def test_export_sheets_and_csv(self):
+        out = self.dest / "r.xlsx"
+        res = ff.run_research_export(self.dest, out, offline=True, log=self.logs.append)
+        self.assertEqual((res["students"], res["surveys"]), (5, 8))
+        wb = load_workbook(out)
+        self.assertIn("課後問卷", wb.sheetnames)
+        ws = wb["課後問卷"]
+        hdr = [c.value for c in ws[1]]
+        for col in ("序號", "活動代碼", "組別", "學段", "填答時間", "K1 作答", "K1 對錯(1/0；正解 B)", "知識答對數(0–3)",
+                    "A1 沒有人要的石頭（像墨玉）也可能是可以再利用的資源", "環境態度平均", "行動意向平均", "科學探究平均",
+                    "K 簡答：學到的一件新事情", "S 簡答：最想用實驗弄清楚的問題", "裝置摘要", "檔名"):
+            self.assertIn(col, hdr)
+        rows = [dict(zip(hdr, r)) for r in ws.iter_rows(min_row=2, values_only=True)]
+        self.assertEqual(len(rows), 8)
+        self.assertNotIn("SEET2026-A155-07", {r["活動代碼"] for r in rows})
+        u = next(r for r in rows if r["活動代碼"] == "STUDENT-TEST")
+        self.assertEqual((u["組別"], u["學段"]), ("未知", "未知"))
+        g = next(r for r in rows if r["檔名"] == "20261201-110000_gamee1.json")
+        self.assertEqual((g["組別"], g["學段"], g["知識答對數(0–3)"], g["環境態度平均"], g["裝置摘要"]),
+                         ("遊戲班", "國小", 3, 5, "Windows／Chrome"))
+        flat = [str(v) for r in wb["課後問卷統計"].iter_rows(values_only=True) for v in r if v is not None]
+        self.assertTrue(any("沒有個人層級的對應" in s for s in flat))
+        self.assertIn("對照班｜國小｜CTRL-E-20261201", flat)
+        self.assertIn("遊戲班｜國中｜GAME-J-20261203", flat)
+        self.assertIn("未知｜未知｜STUDENT-TEST", flat)
+        self.assertIn("對照班｜國小", flat)
+        self.assertIn("環境態度標準差", flat)
+        p = Path(res["survey_csv"])
+        self.assertEqual(p.name, "r_課後問卷_分析用.csv")
+        self.assertTrue(p.read_bytes().startswith(b"\xef\xbb\xbf"))
+        with open(p, encoding="utf-8-sig", newline="") as f:
+            crow = list(csv.reader(f))
+        self.assertEqual(crow[0], ff.survey_columns())
+        self.assertTrue(all(re.fullmatch(r"[a-z_0-9]+", c) for c in crow[0]))
+        for c in ("event", "group", "grade", "k1_correct", "k3_correct", "a1", "s3", "attitude_mean",
+                  "action_mean", "inquiry_mean"):
+            self.assertIn(c, crow[0])
+        self.assertEqual(len(crow), 9)
+        d = [dict(zip(crow[0], r)) for r in crow[1:]]
+        self.assertEqual({x["group"] for x in d}, {"game", "control", "unknown"})
+        c1 = next(x for x in d if x["file"] == "20261201-100200_ctrle2.json")
+        self.assertEqual((c1["group_code"], c1["grade"], c1["k1_correct"], c1["k2_correct"], c1["attitude_mean"]),
+                         ("0", "elem", "0", "1", "4.0"))
+        summ = "\n".join(self.logs)
+        self.assertIn("課後問卷 8 份（遊戲班 4、對照班 3、組別未知 1）", summ)
+        self.assertIn("_課後問卷_分析用.csv", summ)
+
+    def test_cli_summary_and_filters(self):
+        out = self.dest / "cli.xlsx"
+        code = ff.cli_research_export([str(self.dest), str(out), "--group", "對照班", "--offline"])
+        self.assertEqual(code, 0)
+        txt = (self.dest / ff.RESEARCH_SUMMARY_NAME).read_text("utf-8")
+        self.assertIn("課後問卷 3 份（遊戲班 0、對照班 3）", txt)
+        self.assertIn("對照班｜國小｜CTRL-E-20261201：2 份", txt)
+        self.assertIn("CSV（課後問卷）：", txt)
+        self.assertEqual(load_workbook(out)["課後問卷"].max_row, 4)
+
+    def test_empty_surveys(self):
+        """沒有任何研究問卷（只有成人版、或 json 不存在）：工作表照建並寫「尚無課後問卷」，不報錯。"""
+        for p in list((self.dest / ff.JSON_SUBDIR).glob("*.json")):
+            if not p.name.endswith(("seet01.json", "cav001.json")):
+                p.unlink()
+        out = self.dest / "e.xlsx"
+        res = ff.run_research_export(self.dest, out, offline=True, log=self.logs.append)
+        self.assertEqual(res["surveys"], 0)
+        wb = load_workbook(out)
+        self.assertEqual(wb["課後問卷"]["A2"].value, "尚無課後問卷")
+        flat = [str(v) for r in wb["課後問卷統計"].iter_rows(values_only=True) for v in r if v is not None]
+        self.assertIn("尚無課後問卷", flat)
+        with open(res["survey_csv"], encoding="utf-8-sig", newline="") as f:
+            self.assertEqual(len(list(csv.reader(f))), 1)
+        self.assertIn("課後問卷 0 份（遊戲班 0、對照班 0）", "\n".join(self.logs))
+        with tempfile.TemporaryDirectory() as d:                     # 研究資料夾全空（沒有 json、test_json）
+            res = ff.run_research_export(Path(d), Path(d) / "z.xlsx", offline=True, log=lambda m: None)
+            self.assertEqual((res["local"], res["surveys"]), (0, 0))
+            self.assertEqual(load_workbook(Path(d) / "z.xlsx")["課後問卷"]["A2"].value, "尚無課後問卷")
+        sst = ff.compute_survey_stats([])
+        self.assertEqual((sst["n"], sst["order"], sst["all"]["k_score"]), (0, [], ("", 0)))
+
+    def test_survey_download_to_json_and_failure_tolerated(self):
+        listing_t = mock.Mock(status_code=200, headers={})
+        listing_t.json.return_value = []
+        listing_r = mock.Mock(status_code=200, headers={})
+        listing_r.json.return_value = [{"type": "file", "name": "20261205-100000_newstu.json", "download_url": "u9"}]
+        body = json.loads((STUDENT_SAMPLES / "20261201-110000_gamee1.json").read_text("utf-8"))
+        body["event"] = "GAME-E-20261205"
+        good = mock.Mock(status_code=200, headers={}, content=json.dumps(body, ensure_ascii=False).encode("utf-8"))
+        s = mock.Mock(get=mock.Mock(side_effect=[listing_t, listing_r, good]))
+        with tempfile.TemporaryDirectory() as d:
+            res = ff.run_research_export(Path(d), Path(d) / "y.xlsx", session=s, log=self.logs.append)
+            self.assertTrue((Path(d) / "json" / "20261205-100000_newstu.json").exists())
+            self.assertEqual((res["survey_remote"], res["survey_new"], res["surveys"]), (1, 1, 1))
+        bad = mock.Mock(status_code=500, headers={})                  # responses 失敗：前後測仍照常匯出
+        s2 = mock.Mock(get=mock.Mock(side_effect=[listing_t, bad]))
+        with tempfile.TemporaryDirectory() as d:
+            res = ff.run_research_export(Path(d), Path(d) / "y.xlsx", session=s2, log=self.logs.append)
+            self.assertTrue((Path(d) / "y.xlsx").exists())
+            self.assertTrue(any("回饋問卷下載失敗" in m for m in self.logs))
 
 
 if __name__ == "__main__":
