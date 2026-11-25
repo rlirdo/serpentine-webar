@@ -4,6 +4,15 @@
 > token 只貼在兩個地方：GitHub 產生它的那一頁（看一次就關掉）、Apps Script 的「指令碼屬性」。
 > 不要貼進對話、Email、LINE、任何檔案或 repo。
 
+## ★★★ 2026/11/25 v5：中繼改放主帳號（新專案、新網址）
+
+- 主遊戲（`feedback/config.js`）自 2026/11/25 起改指向**主帳號 Gmail** 的 Apps Script 專案
+  `WebAR回饋問卷中繼_主帳號v5`（Code.gs v5，白名單含 `webar-test-v1`，寫入 `feedback/test/`）。
+- token：GitHub fine-grained token `webar-relay-main`（只限 serpentine-webar、Contents 讀寫），**2027/02/23 到期**，到期前要換新並更新指令碼屬性 `GITHUB_TOKEN`。
+- 之後改版：到這個新專案貼上新版 `Code.gs` → 部署 → 管理部署作業 → 鉛筆 → 版本選「新版本」→ 部署（不要再「新增部署作業」）。
+- 檢查：開 `/exec` 網址應看到 `"schemas":["webar-feedback-v2","webar-game-v1","webar-game-v2","webar-test-v1"]` 與 `"token_set":true`。
+- `caviar/`、`hualien-harmony/` 兩個遊戲的 `feedback/config.js` 仍指向舊專案 `WebAR回饋問卷中繼`（另一個 Google 帳號，Code.gs v4），尚未搬移。
+
 ## ★★ 2026/10/29 晚間 v3：遊戲前後測作答上傳，再次重新部署為「新版本」
 
 遊戲（`ar.html`／`play.html`）現在會在**前測做完**與**整局結束**時，各送一筆不記名作答
