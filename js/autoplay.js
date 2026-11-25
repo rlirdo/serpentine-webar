@@ -10,6 +10,8 @@ export function installAutoplay(hud, game) {
     get seq() { return hud.ap.seq; },
     get ready() { return !!hud.ap.action; },
     errors,
+    // 本局「會上傳」的紀錄（自動通關不連網，測試腳本用來比對欄位）。一般模式＝reporter.sent（webar-game-v1）；研究模式＝webar-test-v1
+    get sent() { return game.uploads ? game.uploads() : game.reporter.sent; },
     step() {
       const a = hud.ap.action;
       if (!a) return false;

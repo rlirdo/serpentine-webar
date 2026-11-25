@@ -5,6 +5,7 @@ import { createGame } from "./game.js";
 import { createHud } from "./hud.js";
 import { createAudio } from "./audio.js";
 import { fitInfo } from "./layout.js";
+import { readParams, installStudyUpload } from "./study.js";
 
 const params = new URLSearchParams(location.search);
 const selftest = params.get("selftest") === "1";
@@ -40,7 +41,10 @@ holder.add(stage);
 const audio = createAudio();
 const hud = createHud({ audio });
 hud.showPanel(false);
-const game = createGame({ stage, camera, renderer, hud, host: { mode: "ar", inputEl: container, audio } });
+const sp = readParams(); // 研究模式 ?study=1（可加 grade、event）；沒帶時 study=null，遊戲行為不變
+const study = sp.study ? { grade: sp.grade, event: sp.event } : null;
+const game = createGame({ stage, camera, renderer, hud, host: { mode: "ar", inputEl: container, audio, ...(study ? { study } : {}) } });
+if (study) installStudyUpload(hud);
 
 // ---- 追蹤狀態 ----
 const st = { tracked: false, everFound: false, lostAt: 0, mode: "scan", lastScale: 1000, reported: {} };

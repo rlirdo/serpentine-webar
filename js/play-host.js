@@ -5,6 +5,7 @@ import { createHud } from "./hud.js";
 import { createAudio } from "./audio.js";
 import { installAutoplay } from "./autoplay.js";
 import { fitInfo } from "./layout.js";
+import { readParams, installStudyUpload } from "./study.js";
 
 const params = new URLSearchParams(location.search);
 const autoplay = params.get("autoplay") === "1";
@@ -63,7 +64,10 @@ window.addEventListener("pointerup", () => { drag = null; });
 const audio = createAudio();
 const hud = createHud({ audio });
 const apGrade = params.get("grade") === "junior" ? "junior" : "elem"; // 自動通關選哪一版
-const game = createGame({ stage, camera, renderer, hud, host: { mode: "play", inputEl: view, audio, autoplay, apGrade } });
+const sp = readParams(); // 研究模式 ?study=1（可加 grade、event）；沒帶時 study=null，遊戲行為不變
+const study = sp.study ? { grade: sp.grade, event: sp.event } : null;
+const game = createGame({ stage, camera, renderer, hud, host: { mode: "play", inputEl: view, audio, autoplay, apGrade, ...(study ? { study } : {}) } });
+if (study && !autoplay) installStudyUpload(hud);
 if (autoplay) installAutoplay(hud, game);
 
 const clock = new THREE.Clock();

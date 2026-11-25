@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>墨玉晶格修復任務｜課前課後小測驗</title>
+<meta name="description" content="墨玉晶格修復任務的課前、課後小測驗（對照班用，不記名、不算成績）。">
+<meta name="robots" content="noindex">
+<link rel="icon" href="../assets/icon.png">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { background: radial-gradient(130% 90% at 50% 0%, #14507a 0%, #0b2a47 50%, #071629 100%); }
+  .page-inner { max-width: 600px; padding: calc(16px + var(--safe-t)) 16px 64px; }
+  .kicker { color: #7ef0b4; font-weight: 700; letter-spacing: 2px; font-size: 16px; }
+  .title { font-size: 26px; font-weight: 800; margin: 6px 0 4px; line-height: 1.35; }
+  .lead { font-size: 18px; }
+  .sheet { background: var(--paper); color: var(--ink); border-radius: 20px; padding: 18px 16px 16px;
+           box-shadow: 0 16px 40px rgba(0, 0, 0, .35); margin: 12px 0; animation: fadein .3s; }
+  .sheet .kick { font-size: 16px; font-weight: 700; color: var(--teal); letter-spacing: 1px; }
+  .sheet .q { font-size: 21px; line-height: 1.5; margin: 10px 0 14px; font-weight: 700; }
+  .sheet h2 { margin: 2px 0 8px; font-size: 23px; color: var(--navy); line-height: 1.4; }
+  .sheet p { font-size: 18px; line-height: 1.6; margin: 8px 0; }
+  .opts { display: grid; gap: 10px; }
+  .opt { min-height: 58px; text-align: left; font-size: 19px; line-height: 1.4; padding: 10px 14px; border-radius: 14px; cursor: pointer;
+         background: #fff; color: var(--ink); border: 2px solid #cfdde3; font-weight: 700; font-family: inherit; width: 100%; }
+  .opt b { display: inline-block; width: 30px; color: var(--teal); }
+  .opt.picked { border-color: var(--deep); background: #dcecf6; box-shadow: 0 0 0 3px rgba(6, 90, 130, .25); }
+  .opt:disabled { cursor: default; }
+  .bar { height: 10px; border-radius: 6px; background: #dbe6ea; overflow: hidden; margin-top: 8px; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--teal), var(--green)); transition: width .3s; }
+  .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .row .btn { flex: 1 1 160px; min-height: 58px; font-size: 19px; }
+  .grade-btns { display: grid; gap: 12px; margin-top: 14px; }
+  .grade-btns .btn { min-height: 64px; font-size: 21px; }
+  .tag { display: inline-block; font-size: 15px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #fff3d6; color: #8a5a00; margin-left: 6px; }
+  .privacy { font-size: 16px; color: var(--mute); line-height: 1.6; }
+  .status { font-size: 16px; line-height: 1.55; border-radius: 12px; padding: 10px 12px; margin: 10px 0; display: none; }
+  .status.show { display: block; }
+  .status.wait { background: #fff7e6; border: 1px solid #e8c77a; color: #7a5200; }
+  .status.ok { background: #e3f6ec; border: 1px solid #8fd3ae; color: #1b5a40; }
+  .rest { text-align: center; padding: 26px 16px; }
+  .rest .big { font-size: 64px; line-height: 1; }
+  .rest h2 { font-size: 25px; margin: 12px 0 6px; }
+  .score { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 4px; }
+  .score div { background: #fff; border-radius: 14px; padding: 12px; text-align: center; border: 1px solid #dbe6ea; }
+  .score b { display: block; font-size: 30px; color: var(--green); }
+  .score span { font-size: 16px; color: var(--mute); }
+  .rv { border-top: 1px solid #dbe6ea; padding: 12px 0 4px; }
+  .rv .rq { font-size: 18px; font-weight: 700; line-height: 1.5; }
+  .rv .ra { font-size: 17px; line-height: 1.6; margin-top: 4px; }
+  .rv .ok { color: var(--green); font-weight: 700; }
+  .rv .no { color: var(--bad); font-weight: 700; }
+  .rv .me { color: var(--deep); font-weight: 700; }
+  .rv .ex { font-size: 16px; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: #fff7e6; border-left: 4px solid var(--gold); }
+  .facet-chip { font-size: 15px; }
+  /* 確認對話框 */
+  .dlg { position: fixed; inset: 0; background: rgba(4, 14, 28, .78); display: none; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .dlg.show { display: flex; }
+  .dlg .sheet { max-width: 440px; width: 100%; }
+  noscript p { background: #fff; color: #000; padding: 12px; border-radius: 12px; }
+  #credit { position: static; display: inline-block; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="page"><div class="page-inner">
+  <div class="kicker">QUIZ · 墨玉晶格修復任務</div>
+  <div class="title">課前、課後小測驗</div>
+  <div id="app" aria-live="polite"></div>
+  <div id="net" class="status" role="status"></div>
+  <noscript><p>這個測驗需要開啟 JavaScript 才能作答。</p></noscript>
+  <div id="credit">NDHU自資系游豐兆製作</div>
+</div></div>
+<div id="dlg" class="dlg" role="dialog" aria-modal="true"></div>
+<script src="../feedback/config.js"></script>
+<script type="module" src="test.js"></script>
+</body>
+</html>

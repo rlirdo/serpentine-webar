@@ -1,0 +1,145 @@
+{
+  "schema": "webar-test-v1",
+  "submitted_at": "2026-12-01T09:40:00+08:00",
+  "event": "CTRL-E-R2",
+  "group": "control",
+  "pid": "v9ir91v8zwdd",
+  "sid": "1cwmab7ytay0",
+  "phase": "post",
+  "grade": "elem",
+  "mode": "test",
+  "client_time": "2026-11-25T05:55:30.885Z",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E4",
+      "facet": "知識",
+      "pick": 2,
+      "correct": false
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "E7",
+      "facet": "態度",
+      "pick": 1,
+      "correct": null
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E9",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    }
+  ],
+  "post": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 2,
+      "correct": null
+    },
+    {
+      "id": "E4",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E7",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E9",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "preScore": 4,
+  "postScore": 8,
+  "maxScore": 8,
+  "stars": [],
+  "totalStars": "",
+  "restarts": "",
+  "commit": "珍惜在地資源，不浪費",
+  "commitPick": 1,
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/6.28899.6 Chrome/156.0.8078.100"
+}

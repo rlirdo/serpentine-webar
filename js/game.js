@@ -8,6 +8,7 @@ import { Tweens, ease, makeLabel, glowSprite, Particles, Ripples, disposeTree } 
 import { Xiaojing } from "./character.js";
 import { makeRock, stoneMaterial, makeLattice, makeFlask, makeMicelle, makeIon, makeFe, makeBottle, makeChart } from "./models.js";
 import { createReporter } from "./report.js";
+import * as St from "./study.js";
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const HOME = V(-0.38, 0.33, 0.34), HOME_S = 0.15;
@@ -24,6 +25,23 @@ export function createGame({ stage, camera, renderer, hud, host }) {
   const T = (x) => (x == null ? "" : typeof x === "string" ? x : x[S.grade] || x.elem);
   // 作答匿名上傳：自動通關（測試）不上傳
   const reporter = createReporter({ mode: host.mode, enabled: !host.autoplay });
+  // 研究模式（?study=1，host.study = { grade, event }）：前後測改整份 10 題、不顯示對錯，上傳 webar-test-v1（group=game），
+  // 不另送 webar-game-v1。狀態存 localStorage，重新整理後接續。沒有 host.study 時以下全部不作用。
+  const study = host.study || null;
+  let SS = null; // 研究模式的作答狀態（js/study.js）
+  const AP_SENT_KEY = "serpentineWebAR.study.apSent"; // 自動通關：只記錄、不進補傳佇列、不連網
+  const saveSS = () => St.saveState("game", SS);
+  function studySend(phase) {
+    const rec = St.buildRecord(SS, phase);
+    if (host.autoplay) {
+      const a = St.readJSON(AP_SENT_KEY, []).filter((r) => !(r.sid === rec.sid && r.phase === rec.phase));
+      a.push(rec);
+      St.store.set(AP_SENT_KEY, JSON.stringify(a));
+      return;
+    }
+    St.enqueue(rec);
+    St.flush();
+  }
   let updaters = [];
   const onUpdate = (fn) => { updaters.push(fn); return fn; };
 
@@ -140,22 +158,54 @@ export function createGame({ stage, camera, renderer, hud, host }) {
       if (i === 3) { hop(); burst(CENTER.clone(), "#ffd76a", 20); }
       await hud.next(INTRO[i].text, { ap: `intro-${i + 1}` });
     }
-    const g = await hud.choose(GRADE_ASK, ["國小版（五、六年級）", "國中版"], { ap: "grade", apPick: host.apGrade === "junior" ? 1 : 0, cls: "gold" });
-    S.grade = g === 1 ? "junior" : "elem";
+    if (study && study.grade) {
+      S.grade = study.grade; // 研究模式：網址已指定版本，不再詢問
+    } else {
+      const g = await hud.choose(GRADE_ASK, ["國小版（五、六年級）", "國中版"], { ap: "grade", apPick: host.apGrade === "junior" ? 1 : 0, cls: "gold" });
+      S.grade = g === 1 ? "junior" : "elem";
+    }
     if (hud.speech) hud.speech.setGrade(S.grade); // 語速：國小版 0.95、國中版 1.05
     hud.toast(`已選擇${GRADE_LABEL[S.grade]}`);
     xj.setFace("normal");
+    if (study) {
+      SS = St.newSession("game", { grade: S.grade, event: study.event, mode: host.mode });
+      await hud.next("出發前，先做 10 題小測驗，看看你現在知道多少。答錯沒關係！作答時不會顯示答案，全部玩完再一起看。", { label: "開始前測 ▶", cls: "gold", ap: "pre-intro" });
+      return;
+    }
     await hud.next("出發前，先做 3 題小測驗，看看你現在知道多少。答錯沒關係！", { label: "開始前測 ▶", cls: "gold", ap: "pre-intro" });
   }
 
+  // 研究模式：重新整理後接續（不重播開場、不重考前測）
+  async function welcomeBack() {
+    S.grade = SS.grade;
+    if (hud.speech) hud.speech.setGrade(S.grade);
+    hud.setTitle(TITLE);
+    hud.setProgress(-1, 0);
+    S.stars = SS.stage === "levels" ? Array(8).fill(0) : (SS.stars || Array(8).fill(0)).slice(); // 闖關中斷要重闖，星數歸零
+    hud.setStars(S.stars.reduce((a, b) => a + b, 0));
+    await wait(0.2);
+    xj.setFace("happy");
+    await tw.add(0.6, (k) => xj.scale.setScalar(Math.max(0.001, CENTER_S * k)), ease.outBack);
+    xj.position.copy(CENTER);
+    const where = {
+      pre: SS.pre.length ? `前測做到第 ${SS.pre.length + 1} 題，我們接著做。` : "我們從前測開始。",
+      levels: "前測已經做完、答案都留著。闖關要從第 1 關重新開始喔！",
+      post: SS.post.length ? `後測做到第 ${SS.post.length + 1} 題，我們接著做。` : "八關都完成了，接著做後測。",
+      commit: "後測已經做完，接著選一個小行動。",
+      done: "你已經完成任務了，這是你的結果。",
+    }[SS.stage] || "";
+    await hud.next(`歡迎回來！${where}`, { label: "繼續 ▶", cls: "gold", ap: "resume" });
+  }
+
   // ---------- 測驗 ----------
-  function askOne(kind, i, n, q) {
+  function askOne(kind, i, n, q, studyOrder) {
     return new Promise((resolve) => {
-      const order = shuffle([0, 1, 2, 3]);
+      const order = studyOrder || shuffle([0, 1, 2, 3]);
       const isPre = kind === "pre";
+      // 研究模式：作答中不顯示面向標籤、後測也不顯示對錯與解說
       const m = hud.modal(`
         <div class="kicker">${isPre ? "前測" : "後測"} ${i + 1} / ${n}${isPre ? "・答錯沒關係" : ""}</div>
-        <div class="q">${q.q}<span class="facet-chip">${FACET_NAMES[q.facet]}</span></div>
+        <div class="q">${q.q}${study ? "" : `<span class="facet-chip">${FACET_NAMES[q.facet]}</span>`}</div>
         <div class="opts">${order.map((o, k) => `<button class="opt" data-o="${o}"><b>${"ABCD"[k]}</b>${q.options[o]}</button>`).join("")}</div>
         <div class="after"></div>`, {
         // 語音：題目＋四個選項（A、…；B、…）
@@ -168,8 +218,13 @@ export function createGame({ stage, camera, renderer, hud, host }) {
         done = true;
         const o = Number(b.dataset.o);
         const correct = o === q.answer;
-        (isPre ? S.pre : S.post).push({ id: q.id, facet: q.facet, pick: o, correct });
-        if (isPre) {
+        if (study) {
+          SS[kind].push(St.answer(q, o)); // 態度題 correct=null
+          saveSS();
+        } else {
+          (isPre ? S.pre : S.post).push({ id: q.id, facet: q.facet, pick: o, correct });
+        }
+        if (isPre || study) {
           b.classList.add("picked");
           audio.tap();
           setTimeout(() => resolve(), 450);
@@ -196,6 +251,13 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     });
   }
   async function quiz(kind) {
+    if (study) { // 整份 10 題、題目順序 1→10、選項用存好的洗牌順序；從還沒答的那題接續
+      hud.showPanel(false);
+      let nx;
+      while ((nx = St.nextQuestion(SS, kind))) await askOne(kind, nx.i, St.N, nx.q, nx.order);
+      hud.closeModal();
+      return;
+    }
     const bank = BANK[S.grade];
     const pre = bank.filter((q) => q.pre);
     let qs = pre;
@@ -222,6 +284,7 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     const mistakes = await LEVEL_FNS[i](L);
     const stars = Math.max(1, 3 - mistakes);
     S.stars[i] = stars;
+    if (study) { SS.stars[i] = stars; saveSS(); }
     hud.setStars(S.stars.reduce((a, b) => a + b, 0));
     hud.setProgress(i, i + 1);
     hud.meter(false);
@@ -1115,7 +1178,76 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     } catch (e) { console.warn("無法寫入本機紀錄", e); }
   }
 
+  // 研究模式結果頁：前後測只算 8 題計分題；四面向改用 10 題後測資料，態度題不計對錯所以不顯示「環境態度」分數
+  function showStudyResult() {
+    const qs = St.questions(SS.grade);
+    const MAX = St.maxScore(SS.grade);
+    const preScore = St.scoreOf(SS.pre), postScore = St.scoreOf(SS.post);
+    const stars = SS.stars.reduce((a, b) => a + b, 0);
+    const commit = ENDING.commits[SS.commitPick] || "—";
+    const facets = {};
+    ["知識", "行動", "探究"].forEach((f) => {
+      const rs = SS.post.filter((r) => r.facet === f && r.correct !== null);
+      let v = rs.length ? rs.filter((r) => r.correct).length / rs.length : 0;
+      if (f === "行動") v = (v + (SS.commitPick != null ? 1 : 0)) / 2;
+      if (f === "探究") v = (v + Math.min(1, SS.stars[7] / 3)) / 2;
+      facets[f] = Math.round(v * 100);
+    });
+    hud.setTitle("任務完成！");
+    hud.setProgress(-1, 8);
+    hud.setStars(stars);
+    hud.showPanel(false);
+    xj.setFace("excited");
+    moveXj(CENTER, CENTER_S, 0.8);
+    irBurst(4, 1);
+    audio.fanfare();
+    const d = new Date();
+    const date = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+    const bar = (v, max, color) => `<div class="track"><i style="width:${Math.round((v / max) * 100)}%;background:${color}"></i></div>`;
+    const mark = (q, a) => (!a ? "" : !St.isScored(q) ? "（你的選擇）" : a.correct ? "<b style=\"color:#2e7d5b\">✔</b>" : "<b style=\"color:#e0574b\">✘</b>");
+    const review = qs.map((q, i) => `<div style="border-top:1px solid #dbe6ea;padding:8px 0">
+        <div style="font-weight:700">${i + 1}. ${q.q}<span class="facet-chip">${FACET_NAMES[q.facet]}</span></div>
+        <div class="small" style="color:var(--ink)">前測：${SS.pre[i] ? q.options[SS.pre[i].pick] : "—"} ${mark(q, SS.pre[i])}　後測：${SS.post[i] ? q.options[SS.post[i].pick] : "—"} ${mark(q, SS.post[i])}</div>
+        <div class="small">${St.isScored(q) ? `正確答案：${q.options[q.answer]}。` : "態度題沒有標準答案，不算分。"}${q.explain}</div></div>`).join("");
+    const m = hud.modal(`
+      <div class="kicker">RESULT · 結果</div>
+      <div class="cert">
+        <div class="seal">修復師</div>
+        <svg width="54" height="64" viewBox="0 0 54 64" aria-hidden="true"><polygon points="27,2 50,18 50,46 27,62 4,46 4,18" fill="#2e8b57" stroke="#0b2e1f" stroke-width="2"/><polygon points="27,2 50,18 27,24 4,18" fill="#3fa56b"/><circle cx="19" cy="34" r="4" fill="#0b1f3a"/><circle cx="35" cy="34" r="4" fill="#0b1f3a"/><path d="M20 44 Q27 50 34 44" stroke="#0b1f3a" stroke-width="3" fill="none"/></svg>
+        <h3>墨玉修復師證書</h3>
+        <div class="en">Serpentine Lattice Repair Certificate</div>
+        <div class="stars">★ ${stars} / 24</div>
+        <p>恭喜你完成墨玉晶格修復任務的八個實驗步驟！</p>
+        <p class="small">${date}・${GRADE_LABEL[SS.grade]}</p>
+        <p class="small">我的小行動：${commit}</p>
+        <p class="small">${CREDIT}</p>
+      </div>
+      <div class="sec-title">前測 → 後測（同樣 10 題，只算 ${MAX} 題計分題）</div>
+      <div class="cmp">
+        <span>前測</span>${bar(preScore, MAX, "#94a3b8")}<b>${preScore} / ${MAX}</b>
+        <span>後測</span>${bar(postScore, MAX, "#2e7d5b")}<b>${postScore} / ${MAX}</b>
+      </div>
+      <div class="sec-title">三個面向（後測）</div>
+      <div class="cmp">${["知識", "行動", "探究"].map((f) => `<span>${FACET_NAMES[f]}</span>${bar(facets[f], 100, { 知識: "#1c7293", 行動: "#c99a3e", 探究: "#ef6c3c" }[f])}<b>${facets[f]}%</b>`).join("")}</div>
+      <p class="small">2 題環境態度題只記錄你的選擇，不算對錯，所以這裡不顯示分數。</p>
+      <div class="explain">${ENDING.honesty}</div>
+      <div class="sec-title">每一題的解說</div>
+      ${review}
+      <p class="small">可以截圖保存證書。作答結果會以不記名方式（無姓名、學號）上傳作研究統計。</p>
+      <div class="row"><button class="btn alt next-kid">下一位同學</button><a class="btn gold" href="teacher.html">給老師看</a></div>`, {
+      speech: `恭喜你完成墨玉晶格修復任務的八個實驗步驟！\n你一共得到 ${stars} 顆星，滿分是 24 顆。\n前測答對 ${preScore} 題，後測答對 ${postScore} 題，滿分是 ${MAX} 題。\n${ENDING.honesty}`,
+    });
+    m.querySelector(".next-kid").addEventListener("click", () => {
+      if (!window.confirm("要換下一位同學了嗎？按〔確定〕會清掉這次的結果畫面（已存的作答會繼續上傳）。")) return;
+      St.clearState("game");
+      St.playerId(true); // 下一位同學換新的匿名代碼
+      location.reload();
+    });
+    hud.setAP("result", null);
+  }
+
   function showResult() {
+    if (study) { showStudyResult(); return; }
     const R = computeResult();
     saveRecord(R);
     reporter.send("post", S, R);
@@ -1160,7 +1292,62 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     hud.setAP("result", null);
   }
 
+  // 研究模式流程：前測 10 題 → 八關 → 後測 10 題 → 行動承諾 → 結果頁；每一步都存檔，重新整理後依階段接續
+  async function levelsThenPostIntro() {
+    for (let i = 0; i < 8; i++) await level(i);
+    clearLab();
+    keep.visible = false;
+    S.level = 8;
+    xj.setEnergy(1);
+    St.startPost(SS); // 後測選項重新洗牌
+    saveSS();
+    await moveXj(CENTER, 0.24, 0.6);
+    await hud.next("恭喜完成八關！再做一次同樣的 10 題測驗。", { label: "開始後測 ▶", cls: "gold", ap: "post-intro" });
+  }
+  async function runStudy() {
+    SS = St.loadState("game");
+    if (SS) await welcomeBack();
+    else await intro(); // 會建立 SS
+    if (SS.stage === "pre") {
+      await quiz("pre");
+      studySend("pre"); // 前測做完先上傳（進補傳佇列）
+      SS.stage = "levels";
+      saveSS();
+      await levelsThenPostIntro();
+    } else if (SS.stage === "levels") {
+      // 關卡之間共用 3D 物件（晶格、燒瓶），無法從中間某關接續：保留前測，從第 1 關重新闖關
+      SS.restarts = (SS.restarts || 0) + 1;
+      SS.stars = Array(8).fill(0);
+      S.stars = Array(8).fill(0);
+      hud.setStars(0);
+      saveSS();
+      await levelsThenPostIntro();
+    } else if (SS.stage !== "done") {
+      xj.setEnergy(1);
+      await moveXj(CENTER, 0.24, 0.6);
+    }
+    if (SS.stage === "post") {
+      await quiz("post");
+      SS.stage = "commit";
+      saveSS();
+    }
+    if (SS.stage === "commit") {
+      await commitment();
+      SS.commitPick = ENDING.commits.indexOf(S.commit);
+      studySend("post");
+      SS.stage = "done";
+      SS.doneAt = new Date().toISOString();
+      saveSS();
+      hud.closeModal();
+    }
+    showResult();
+  }
+
   async function run() {
+    if (study) {
+      try { await runStudy(); } catch (e) { console.error(e); hud.say("糟糕，出了一點問題，請重新整理頁面，會從剛才的地方接著做。"); }
+      return;
+    }
     try {
       await intro();
       await quiz("pre");
@@ -1206,6 +1393,9 @@ export function createGame({ stage, camera, renderer, hud, host }) {
     get started() { return started; },
     state: S,
     reporter,
+    // 測試用：本局會上傳的紀錄（一般模式 webar-game-v1；研究模式自動通關時記錄的 webar-test-v1）
+    uploads: () => (study ? St.readJSON(AP_SENT_KEY, []) : reporter.sent),
+    get studyState() { return SS; },
     xj,
   };
 }

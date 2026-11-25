@@ -14,6 +14,10 @@
   --audible 才出聲）。每個畫面呼叫 __ap.speechCheck() 確認畫面上的對話／題目／選項／詳解／提示框都有對應的 speak()；
   結束時讀 window.__speech.log，以 __speech.residue() 檢查正規化後殘留符號。
   --speech none：模擬 speechSynthesis 不存在；--speech novoice：模擬裝置只有英文語音（沒有中文語音）。
+- 2026/11/25 研究模式：--study（play.html?study=1，整份 10 題前後測，webar-test-v1 group=game；自動通關只記錄在
+  localStorage serpentineWebAR.study.apSent，不進補傳佇列、不連網）、--grade elem|junior、
+  --reload-at 標籤1,標籤2（走到該畫面時重新整理，檢查中途恢復，例如 pre-q5,L3-intro,post-q3）。
+  結果檔另含 uploads（本局會上傳的紀錄；一般模式為 webar-game-v1）、reloads、study_state。
 """
 import functools
 import json
@@ -41,7 +45,8 @@ try { Object.defineProperty(window, 'SpeechSynthesisUtterance', { value: undefin
 }
 
 
-def run(name, port=8766, settle=0.55, max_steps=400, base=None, tag="", speech="normal", audible=False):
+def run(name, port=8766, settle=0.55, max_steps=400, base=None, tag="", speech="normal", audible=False,
+        study=False, grade=None, reload_at=()):
     w, h, mobile = VIEWPORTS[name]
     base = (base or f"http://127.0.0.1:{port}/").rstrip("/") + "/"
     base_host = urlparse(base).netloc
@@ -62,15 +67,20 @@ def run(name, port=8766, settle=0.55, max_steps=400, base=None, tag="", speech="
         init = ("" if audible else "window.__speechTestVolume = 0;\n") + SPEECH_INIT[speech]
         if init:
             ch.send("Page.addScriptToEvaluateOnNewDocument", {"source": init})
-        grade = "junior" if name == "landscape" else "elem"  # 橫向加測順便跑國中版題庫與文案
-        ch.send("Page.navigate", {"url": f"{base}play.html?autoplay=1&grade={grade}"})
+        grade = grade or ("junior" if name == "landscape" else "elem")  # 橫向加測順便跑國中版題庫與文案
+        # --study：研究模式（整份 10 題前後測，webar-test-v1；自動通關只記錄、不連網）
+        ch.send("Page.navigate", {"url": f"{base}play.html?autoplay=1&grade={grade}" + ("&study=1&event=AP-STUDY-TEST" if study else "")})
         t_start = time.time()
-        for _ in range(200):
-            if ch.eval("!!(window.__ap && window.__ap.ready)"):
-                break
-            time.sleep(0.1)
-        else:
+
+        def wait_ready():
+            for _ in range(200):
+                if ch.eval("!!(window.__ap && window.__ap.ready)"):
+                    return
+                time.sleep(0.1)
             raise RuntimeError("autoplay 未就緒")
+        wait_ready()
+        pending_reload = list(reload_at)  # --reload-at：走到這些畫面時重新整理，測試中途恢復
+        reloads = []
         n = 0
         last_seq = -1
         while n < max_steps:
@@ -92,6 +102,18 @@ def run(name, port=8766, settle=0.55, max_steps=400, base=None, tag="", speech="
             chk = ch.eval("__ap.check()")
             spk = ch.eval("__ap.speechCheck()")
             records.append({"n": n, "label": st["label"], "shot": f"tools/shots/{fn}", "check": chk, "speech": spk})
+            if st["label"] in pending_reload:
+                pending_reload.remove(st["label"])
+                before = ch.eval("JSON.parse(localStorage.getItem('serpentineWebAR.studyGame.state.v1') || 'null')")
+                ch.send("Page.reload", {})
+                time.sleep(1.0)
+                wait_ready()
+                after = ch.eval("JSON.parse(localStorage.getItem('serpentineWebAR.studyGame.state.v1') || 'null')")
+                reloads.append({"at": st["label"], "n": n, "before": before, "after_load": after,
+                                "first_label_after": ch.eval("__ap.label")})
+                print(f"[{label}] 重新整理於 {st['label']} → 恢復後第一個畫面 {reloads[-1]['first_label_after']}")
+                last_seq = -1
+                continue
             if st["label"] == "result":
                 # 結果頁可捲動：再截一張捲到底
                 ch.eval("(() => { const m = document.querySelector('.modal-wrap'); m.scrollTop = m.scrollHeight; return true; })()")
@@ -115,6 +137,8 @@ def run(name, port=8766, settle=0.55, max_steps=400, base=None, tag="", speech="
             elif m == "Log.entryAdded" and p.get("entry", {}).get("level") == "error":
                 console_errors.append(p["entry"].get("text", "")[:400])
         ap_errors = ch.eval("__ap.errors")
+        uploads = ch.eval("__ap.sent")
+        study_state = ch.eval("JSON.parse(localStorage.getItem('serpentineWebAR.studyGame.state.v1') || 'null')")
         store = ch.eval("localStorage.getItem('serpentineWebAR.records.v1')")
         speech_log = ch.eval("""(() => { const s = window.__speech; if (!s) return null;
           return { state: s.state(), log: s.log.map((e) => ({ ...e, residue: s.residue(e.pre) })) }; })()""")
@@ -144,7 +168,8 @@ def run(name, port=8766, settle=0.55, max_steps=400, base=None, tag="", speech="
         "seconds": elapsed, "console_errors": console_errors, "ap_errors": ap_errors,
         "credit_problems": [(r["n"], r["label"], r["check"]) for r in bad_credit],
         "overflow_problems": [(r["n"], r["label"], r["check"]["overflow"]) for r in overflow],
-        "saved_record": json.loads(store)[-1] if store else None, "speech": speech_summary,
+        "saved_record": json.loads(store)[-1] if store else None, "uploads": uploads, "reloads": reloads,
+        "study_state": study_state, "speech": speech_summary,
         "speech_log": slog, "records": records,
     }
     (OUT / f"autoplay_{label}.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -179,11 +204,21 @@ def main():
     audible = "--audible" in args
     if audible:
         args.remove("--audible")
+    study = "--study" in args
+    if study:
+        args.remove("--study")
+    grade = None
+    if "--grade" in args:
+        i = args.index("--grade"); grade = args[i + 1]; del args[i:i + 2]
+    reload_at = ()
+    if "--reload-at" in args:
+        i = args.index("--reload-at"); reload_at = tuple(args[i + 1].split(",")); del args[i:i + 2]
     which = args[0] if args else "all"
     srv = None if base else devserver.start(8766)
     try:
         names = ["mobile", "desktop"] if which == "all" else [which]
-        res = [run(n, base=base, tag=(tag + "_") if tag else "", speech=speech, audible=audible) for n in names]
+        res = [run(n, base=base, tag=(tag + "_") if tag else "", speech=speech, audible=audible,
+                   study=study, grade=grade, reload_at=reload_at) for n in names]
     finally:
         if srv:
             srv.shutdown()

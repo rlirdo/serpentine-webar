@@ -1,6 +1,15 @@
 /**
  * WebAR 遊戲回饋問卷＋遊戲前後測作答 中繼（Google Apps Script 網頁應用程式）
  *
+ * ★ v5：2026/11/25 新增 schema webar-test-v1（研究用整份 10 題前後測，兩組共用）：
+ *   group='control'：對照班「只有測驗」頁 test/index.html，不玩遊戲，mode 固定 'test'，不可帶星數；
+ *   group='game'：遊戲研究模式 play.html／ar.html?study=1，mode 為 ar|play，後測必帶八關星數（1–3）與 restarts。
+ *   兩組都是課前、課後各做同一份整份 10 題，後測後選一項行動承諾；研究模式不另送 webar-game-v1。
+ *   寫入 feedback/test/（不是 feedback/game/，撈取工具的遊戲彙整不受影響），檔名 yyyyMMdd-HHmmss_<phase>_<6碼>.json。
+ *   webar-game-v1、webar-game-v2、webar-feedback-v2 的行為完全不變。
+ *   貼上本檔後「需重新部署為新版本」：部署 → 管理部署作業 → 鉛筆（編輯）→ 版本選「新版本」→ 部署。
+ *   不可按「新增部署作業」（/exec 網址會改變）。未重新部署前，對照班頁面的上傳會被回「schema 不符」，
+ *   資料留在學生手機的補傳佇列，重新部署後學生再開頁面才會補傳。
  * ★ v4：2026/11/04 新增 schema webar-game-v2（新遊戲「墨玉護衛隊：花蓮綠晶行動」，方向盤版
  *   mode='drive'；多收 age 年齡 3–120／gender 性別（男、女、其他、不透露）／org 學校或單位 ≤60 字／
  *   hero 主角 id ≤20 字）。同樣寫入 feedback/game/，檔名 yyyyMMdd-HHmmss_<phase>_<6碼>.json。
@@ -51,11 +60,12 @@ function doPost(e) {
     var raw = (e && e.postData && e.postData.contents) || '';
     if (!raw || raw.length > 20000) return json_({ ok: false, error: '內容為空或過大' });
     var input = JSON.parse(raw);
-    if (!input || (input.schema !== SCHEMA && input.schema !== GAME_SCHEMA && input.schema !== GAME_SCHEMA_V2)) return json_({ ok: false, error: 'schema 不符' });
+    if (!input || (input.schema !== SCHEMA && input.schema !== GAME_SCHEMA && input.schema !== GAME_SCHEMA_V2 && input.schema !== TEST_SCHEMA)) return json_({ ok: false, error: 'schema 不符' });
+    var isTest = input.schema === TEST_SCHEMA;
     var isV2 = input.schema === GAME_SCHEMA_V2;
-    var isGame = input.schema === GAME_SCHEMA || isV2;
+    var isGame = input.schema === GAME_SCHEMA || isV2 || isTest;   // isGame：檔名帶 phase
 
-    var rec = isV2 ? cleanGameV2_(input) : (isGame ? cleanGame_(input) : clean_(input));
+    var rec = isTest ? cleanTest_(input) : (isV2 ? cleanGameV2_(input) : (isGame ? cleanGame_(input) : clean_(input)));
     if (rec.error) return json_({ ok: false, error: rec.error });
 
     var tz = 'Asia/Taipei';
@@ -67,11 +77,11 @@ function doPost(e) {
     if (!token) return json_({ ok: false, error: '中繼尚未設定 GITHUB_TOKEN' });
 
     var ordered = {};
-    (isV2 ? GAME_FIELDS_V2 : (isGame ? GAME_FIELDS : FIELDS)).forEach(function (k) { ordered[k] = rec[k]; });
+    (isTest ? TEST_FIELDS : (isV2 ? GAME_FIELDS_V2 : (isGame ? GAME_FIELDS : FIELDS))).forEach(function (k) { ordered[k] = rec[k]; });
     var body = JSON.stringify(ordered, null, 2) + '\n';
 
     var url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME +
-      '/contents/' + (isGame ? GAME_DIR : RESP_DIR) + '/' + name + '.json';
+      '/contents/' + (isTest ? TEST_DIR : (isGame ? GAME_DIR : RESP_DIR)) + '/' + name + '.json';
     var resp = UrlFetchApp.fetch(url, {
       method: 'put',
       contentType: 'application/json',
@@ -81,7 +91,7 @@ function doPost(e) {
         'X-GitHub-Api-Version': '2022-11-28'
       },
       payload: JSON.stringify({
-        message: (isGame ? 'game: ' : 'feedback: ') + name,
+        message: (isTest ? 'test: ' : (isGame ? 'game: ' : 'feedback: ')) + name,
         content: Utilities.base64Encode(body, Utilities.Charset.UTF_8)
       }),
       muteHttpExceptions: true
@@ -101,7 +111,100 @@ function doPost(e) {
 /** 瀏覽器直接開 /exec 網址時的健康檢查 */
 function doGet() {
   var hasToken = !!PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  return json_({ ok: true, service: 'webar-feedback-relay', schema: SCHEMA, schemas: [SCHEMA, GAME_SCHEMA, GAME_SCHEMA_V2], token_set: hasToken });
+  return json_({ ok: true, service: 'webar-feedback-relay', schema: SCHEMA, schemas: [SCHEMA, GAME_SCHEMA, GAME_SCHEMA_V2, TEST_SCHEMA], token_set: hasToken });
+}
+
+// ---------------------------------------------------------------- 對照班只有測驗（webar-test-v1）
+var TEST_SCHEMA = 'webar-test-v1';
+var TEST_DIR = 'feedback/test';
+var DEFAULT_TEST_EVENT = 'CTRL-TEST';
+var TEST_N = 10;
+var DEFAULT_STUDY_EVENT = 'STUDY-GAME';
+var TEST_GROUPS = ['control', 'game'];             // control＝對照班測驗頁；game＝遊戲研究模式（?study=1）
+var TEST_ATTITUDE = ['E3', 'E7', 'J3', 'J8'];      // 態度題：不計對錯（correct 一律寫 null）
+// 欄位順序固定（撈取工具依此解析）
+var TEST_FIELDS = ['schema', 'submitted_at', 'event', 'group', 'pid', 'sid', 'phase', 'grade', 'mode', 'client_time',
+  'pre', 'post', 'preScore', 'postScore', 'maxScore', 'stars', 'totalStars', 'restarts', 'commit', 'commitPick', 'ua'];
+
+/** 對照班與遊戲班研究模式：前測／後測各 10 題，題號須依版本由 1 到 10 排好；分數只算 8 題計分題（伺服器重算）。
+ *  group=game：mode 為 ar|play；後測必帶 8 關星數（1–3 整數）；restarts＝中途重新整理後從第 1 關重闖的次數。
+ *  group=control：mode 一律 test，不可帶星數。 */
+function cleanTest_(d) {
+  if (TEST_GROUPS.indexOf(d.group) < 0) return { error: 'group 必須是 control 或 game' };
+  var isGameGroup = d.group === 'game';
+  var r = { schema: TEST_SCHEMA, event: str_(d.event, 40) || (isGameGroup ? DEFAULT_STUDY_EVENT : DEFAULT_TEST_EVENT) };
+  r.group = d.group;
+  var hasStars = Array.isArray(d.stars) ? d.stars.length > 0 : (d.stars !== undefined && d.stars !== null && d.stars !== '');
+  if (!isGameGroup && hasStars) return { error: '對照班不可帶 stars' };
+  if (!CODE_RE.test(String(d.pid || ''))) return { error: 'pid 格式不符' };
+  if (!CODE_RE.test(String(d.sid || ''))) return { error: 'sid 格式不符' };
+  r.pid = d.pid; r.sid = d.sid;
+  if (d.phase !== 'pre' && d.phase !== 'post') return { error: 'phase 必須是 pre 或 post' };
+  r.phase = d.phase;
+  if (d.grade !== 'elem' && d.grade !== 'junior') return { error: 'grade 必須是 elem 或 junior' };
+  r.grade = d.grade;
+  r.mode = isGameGroup ? ((d.mode === 'ar' || d.mode === 'play') ? d.mode : 'play') : 'test';
+  r.client_time = str_(d.client_time, 40);
+  var isPost = r.phase === 'post';
+  r.stars = []; r.totalStars = ''; r.restarts = '';
+  if (isGameGroup) {
+    if (isPost) {
+      if (!Array.isArray(d.stars) || d.stars.length !== 8) return { error: 'stars 必須是 8 個整數' };
+      for (var s = 0; s < 8; s++) {
+        var sv = d.stars[s];
+        if (!(typeof sv === 'number' && sv >= 1 && sv <= 3 && Math.floor(sv) === sv)) return { error: 'stars 必須是 1–3 的整數' };
+        r.stars.push(sv);
+      }
+      r.totalStars = r.stars.reduce(function (a, b) { return a + b; }, 0);
+    } else if (hasStars) {
+      return { error: '前測不可帶 stars' };
+    }
+    var rs = Number(d.restarts);
+    r.restarts = (typeof d.restarts === 'number' && rs >= 0 && rs <= 99 && Math.floor(rs) === rs) ? rs : 0;
+  }
+  var pre = testAnswers_(d.pre, r.grade);
+  if (pre.error) return { error: '前測 ' + pre.error };
+  r.pre = pre.list;
+  if (isPost) {
+    var post = testAnswers_(d.post, r.grade);
+    if (post.error) return { error: '後測 ' + post.error };
+    r.post = post.list;
+  } else {
+    r.post = [];
+  }
+  var score = function (list) { return list.filter(function (a) { return a.correct === true; }).length; };
+  r.preScore = score(r.pre);
+  r.postScore = isPost ? score(r.post) : '';
+  r.maxScore = TEST_N - 2;
+  if (isPost) {
+    var cpRaw = d.commitPick;
+    var cp = (typeof cpRaw === 'number' || (typeof cpRaw === 'string' && /^\s*\d+\s*$/.test(cpRaw))) ? Number(cpRaw) : NaN;
+    if (!(cp >= 0 && cp <= 3 && Math.floor(cp) === cp)) return { error: 'commitPick 必須是 0–3' };
+    r.commitPick = cp;
+    r.commit = str_(d.commit, 80);
+  } else {
+    r.commitPick = ''; r.commit = '';
+  }
+  r.ua = str_(d.ua, 120);
+  return r;
+}
+
+/** 10 題、題號依序 E1–E10 或 J1–J10、pick 0–3；態度題 correct=null，其餘為布林 */
+function testAnswers_(arr, grade) {
+  if (!Array.isArray(arr) || arr.length !== TEST_N) return { error: '作答必須是 ' + TEST_N + ' 題' };
+  var prefix = grade === 'junior' ? 'J' : 'E';
+  var out = [];
+  for (var i = 0; i < TEST_N; i++) {
+    var a = arr[i] || {};
+    var id = prefix + (i + 1);
+    if (String(a.id || '') !== id) return { error: '第 ' + (i + 1) + ' 題題號必須是 ' + id };
+    var pick = Number(a.pick);
+    if (!(pick >= 0 && pick <= 3 && Math.floor(pick) === pick)) return { error: 'pick 必須是 0–3' };
+    var att = TEST_ATTITUDE.indexOf(id) >= 0;
+    out.push({ id: id, facet: GAME_FACETS.indexOf(a.facet) >= 0 ? a.facet : '',
+      pick: pick, correct: att ? null : (a.correct === true || a.correct === 'true') });
+  }
+  return { list: out };
 }
 
 // ---------------------------------------------------------------- 遊戲前後測（webar-game-v1）

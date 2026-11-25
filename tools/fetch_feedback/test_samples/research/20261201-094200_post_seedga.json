@@ -1,0 +1,154 @@
+{
+  "schema": "webar-test-v1",
+  "submitted_at": "2026-12-01T09:42:00+08:00",
+  "event": "STUDY-E-R2",
+  "group": "game",
+  "pid": "yid867m0xjbb",
+  "sid": "seedgame0001",
+  "phase": "post",
+  "grade": "elem",
+  "mode": "play",
+  "client_time": "2026-11-25T05:56:29.528Z",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E4",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E7",
+      "facet": "態度",
+      "pick": 3,
+      "correct": null
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E9",
+      "facet": "探究",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    }
+  ],
+  "post": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E4",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E7",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E9",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "preScore": 0,
+  "postScore": 7,
+  "maxScore": 8,
+  "stars": [
+    3,
+    2,
+    3,
+    3,
+    2,
+    3,
+    1,
+    3
+  ],
+  "totalStars": 20,
+  "restarts": 0,
+  "commit": "做好垃圾分類回收",
+  "commitPick": 0,
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/6.28899.6 Chrome/156.0.8078.100"
+}

@@ -91,6 +91,43 @@
 - 撈取工具以 `pid` 判斷重複：同一玩家代碼 30 分鐘內的第二筆前測／後測略過，只取第一次；超過 30 分鐘視為再玩一次。
 - 不蒐集姓名、學號、學校、email；pid 是隨機代碼，無法回推身分。
 
+## 研究用整份 10 題前後測（schema `webar-test-v1`，2026/11/25 新增；對照班＋遊戲班研究模式）
+
+兩組共用 `js/study.js`（題目順序、洗牌、計分、態度題、上傳欄位、補傳佇列都一樣）：
+- **對照班** `group=control`：`test/index.html`（下節）。`mode` 固定 `test`，不可帶星數。
+- **遊戲班研究模式** `group=game`：`play.html?study=1&grade=elem|junior&event=活動代碼`（`ar.html` 同參數）。
+  第一關前考 10 題、第八關後再考 10 題（作答時不顯示對錯與面向標籤），行動承諾後上傳 `phase=post`；
+  `mode` 為 `ar|play`，後測另帶 `stars`（8 個 1–3 整數，必填）、`totalStars`（中繼重算）、`restarts`（闖關途中重新整理後從第 1 關重闖的次數）。
+  研究模式**不會**另送 `webar-game-v1`。沒帶 `study=1` 時遊戲行為與 `webar-game-v1` 上傳完全不變。
+- 兩組都寫入 `test/`。欄位順序：`schema, submitted_at, event, group, pid, sid, phase, grade, mode, client_time, pre, post,
+  preScore, postScore, maxScore, stars, totalStars, restarts, commit, commitPick, ua`（對照班的 `stars` 為 `[]`、`totalStars`／`restarts` 為空字串）。
+
+## 對照班只有測驗（schema `webar-test-v1`，2026/11/25 新增）
+
+`test/index.html`（網址 `…/serpentine-webar/test/?grade=elem|junior&event=活動代碼`）給研究的對照班用：不玩遊戲，
+課前、課後各做同一份**整份 10 題**（國小 E1–E10、國中 J1–J10，題目固定 1→10、選項洗牌、作答時不顯示對錯），
+後測後選一項行動承諾（`js/content.js` 的 `ENDING.commits`）。前測做完送 `phase=pre`、全部做完送 `phase=post`；
+上傳失敗留在手機 localStorage 佇列，下次開頁或回到線上時自動補傳。
+中繼（`relay/Code.gs` v5）寫入 **`test/`**（不是 `game/`），檔名 `<YYYYMMDD-HHMMSS>_<pre|post>_<6碼>.json`，
+所以撈取工具現有的遊戲彙整不會讀到。**中繼需重新部署為新版本才會收這個 schema。**
+
+```json
+{
+  "schema": "webar-test-v1", "submitted_at": "2026-11-25T13:00:00+08:00", "event": "CTRL-TEST（或網址 event 參數）",
+  "group": "control", "pid": "匿名代碼 12 碼（與遊戲共用 serpentineWebAR.pid）", "sid": "本次代碼 12 碼（前測與後測相同）",
+  "phase": "pre | post", "grade": "elem | junior", "mode": "test", "client_time": "裝置時間 ISO",
+  "pre":  [{"id": "E1", "facet": "知識", "pick": 0, "correct": true}, "…共 10 題，依題號排序；態度題 correct 為 null"],
+  "post": ["phase=post 時同樣 10 題；pre 時為 []"],
+  "preScore": 4, "postScore": 8, "maxScore": 8,
+  "stars": [], "totalStars": "", "restarts": "",
+  "commit": "行動承諾文字", "commitPick": 1, "ua": "瀏覽器 UA 截短 120 字"
+}
+```
+
+- 組別：`schema`＝`webar-test-v1`、`group`＝`control`、`mode`＝`test` 三者都表示對照班；遊戲班仍是 `webar-game-v1`（`game/`）。
+- 計分只算 8 題：態度題（國小 E3、E7；國中 J3、J8）`correct` 一律 `null`，中繼重算 `preScore`／`postScore`。
+- `pick`、`commitPick` 都是原始索引（題目正解一律索引 0）。配對前後測用 `sid`（同一次作答）；`pid` 在「下一位同學」時會換新。
+
 ## 舊版 v1（2026/10/22–10/28）
 
 `responses/` 內 schema 為 `webar-feedback-v1` 的檔案保留不動，欄位為：

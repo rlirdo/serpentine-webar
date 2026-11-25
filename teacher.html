@@ -55,6 +55,29 @@
   <h2>作答紀錄</h2>
   <div class="tablewrap"><table id="records"></table></div>
 
+  <h2>研究用前後測：對照班與遊戲班</h2>
+  <p class="note" style="margin:0 0 6px"><b>對照班使用方式（只有測驗、不玩遊戲）</b></p>
+  <div class="note" style="background:#fff;border-radius:14px;padding:12px 16px;box-shadow:0 2px 8px rgba(15,23,42,.06)">
+    對照班上一般講述課，不玩遊戲；課前、課後各做同一份 10 題，後測後選一項行動承諾，完成後才可以玩遊戲。
+    <ol style="margin:8px 0;padding-left:22px">
+      <li><b>課前</b>：學生用手機掃碼打開測驗頁，選版本後做前測 10 題（作答時不顯示對錯）。</li>
+      <li><b>上課</b>：前測做完，畫面會請學生把手機放下聽課。關掉網頁、手機休眠都沒關係，再開同一個網址會回到原畫面。</li>
+      <li><b>課後</b>：老師宣布後，學生按〔開始後測〕→ 再按〔是，開始後測〕，做同樣 10 題，再選一項行動承諾。</li>
+      <li><b>完成</b>：才顯示前測、後測各答對幾題（8 題計分，2 題態度題不算分）與每題解說，並出現〔現在可以玩遊戲了〕。</li>
+    </ol>
+    <b>對照班</b>測驗頁網址（版本可預選）：<br>
+    國小版 <a href="test/?grade=elem&amp;event=CTRL-TEST">test/?grade=elem&amp;event=CTRL-TEST</a>　國中版 <a href="test/?grade=junior&amp;event=CTRL-TEST">test/?grade=junior&amp;event=CTRL-TEST</a>
+    <h3 style="font-size:18px;color:#0B1F3A;margin:14px 0 4px">遊戲班研究模式（同一份 10 題）</h3>
+    遊戲班照常玩遊戲，但用研究模式網址：第一關前考整份 10 題、第八關後再考同樣 10 題（作答時都不顯示對錯），再選行動承諾，結果頁才顯示分數與每題解說。
+    中途重新整理或誤關網頁，再開同一網址會接續：前測做到哪題就從哪題接著做；闖關中斷會保留前測、從第 1 關重新闖關；後測與行動承諾從中斷處接著做。<br>
+    無相機版：國小版 <a href="play.html?study=1&amp;grade=elem&amp;event=STUDY-GAME">play.html?study=1&amp;grade=elem&amp;event=STUDY-GAME</a>　國中版 <a href="play.html?study=1&amp;grade=junior&amp;event=STUDY-GAME">play.html?study=1&amp;grade=junior&amp;event=STUDY-GAME</a><br>
+    AR 版（任務卡）：國小版 <a href="ar.html?study=1&amp;grade=elem&amp;event=STUDY-GAME">ar.html?study=1&amp;grade=elem&amp;event=STUDY-GAME</a>　國中版 <a href="ar.html?study=1&amp;grade=junior&amp;event=STUDY-GAME">ar.html?study=1&amp;grade=junior&amp;event=STUDY-GAME</a>
+    <p style="margin:10px 0 0"><b>兩班請用不同的活動代碼</b>（event，英數、底線與連字號，最多 40 字），例如對照班 <code>CTRL-E-20261201</code>、遊戲班 <code>GAME-E-20261201</code>；
+    不加 event 時，對照班預設 CTRL-TEST、遊戲班預設 STUDY-GAME。兩班作答都以不記名方式上傳（schema <code>webar-test-v1</code>，組別 control／game），
+    存在 repo 的 <code>feedback/test/</code>；研究模式不會另外送一般遊戲的 <code>feedback/game/</code> 紀錄。
+    同一支手機給下一位同學用時，對照班在完成頁按〔重新開始（下一位同學）〕，遊戲班在結果頁按〔下一位同學〕。</p>
+  </div>
+
   <h2>課程與評量對照表</h2>
   <div class="tablewrap"><table id="map"></table></div>
   <p class="note">對應的課綱議題為學習主題層級（自然科學：物質與能量、科學探究；環境教育：環境倫理、永續發展、能源資源永續利用），實際條目請教師依授課年段核對。<br>

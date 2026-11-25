@@ -1,0 +1,154 @@
+{
+  "schema": "webar-test-v1",
+  "submitted_at": "2026-12-01T09:43:00+08:00",
+  "event": "AP-STUDY-TEST",
+  "group": "game",
+  "pid": "yid867m0xjbb",
+  "sid": "ml8dvd0phfju",
+  "phase": "post",
+  "grade": "elem",
+  "mode": "play",
+  "client_time": "2026-11-25T05:53:52.787Z",
+  "pre": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E4",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E7",
+      "facet": "態度",
+      "pick": 3,
+      "correct": null
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "E9",
+      "facet": "探究",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    }
+  ],
+  "post": [
+    {
+      "id": "E1",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E2",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E4",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E5",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E6",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E7",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "E8",
+      "facet": "行動",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E9",
+      "facet": "探究",
+      "pick": 0,
+      "correct": true
+    },
+    {
+      "id": "E10",
+      "facet": "知識",
+      "pick": 0,
+      "correct": true
+    }
+  ],
+  "preScore": 0,
+  "postScore": 8,
+  "maxScore": 8,
+  "stars": [
+    3,
+    3,
+    2,
+    3,
+    3,
+    2,
+    2,
+    3
+  ],
+  "totalStars": 21,
+  "restarts": 1,
+  "commit": "跟家人分享今天學到的事",
+  "commitPick": 2,
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+}

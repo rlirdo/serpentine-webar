@@ -1,0 +1,84 @@
+{
+  "schema": "webar-test-v1",
+  "submitted_at": "2026-12-01T09:04:00+08:00",
+  "event": "AP-STUDY-TEST",
+  "group": "game",
+  "pid": "o0bql3t7nsjb",
+  "sid": "3wqs0m1umrsl",
+  "phase": "pre",
+  "grade": "junior",
+  "mode": "play",
+  "client_time": "2026-11-25T05:54:15.258Z",
+  "pre": [
+    {
+      "id": "J1",
+      "facet": "知識",
+      "pick": 2,
+      "correct": false
+    },
+    {
+      "id": "J2",
+      "facet": "探究",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "J3",
+      "facet": "態度",
+      "pick": 0,
+      "correct": null
+    },
+    {
+      "id": "J4",
+      "facet": "知識",
+      "pick": 2,
+      "correct": false
+    },
+    {
+      "id": "J5",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "J6",
+      "facet": "知識",
+      "pick": 1,
+      "correct": false
+    },
+    {
+      "id": "J7",
+      "facet": "行動",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "J8",
+      "facet": "態度",
+      "pick": 3,
+      "correct": null
+    },
+    {
+      "id": "J9",
+      "facet": "探究",
+      "pick": 3,
+      "correct": false
+    },
+    {
+      "id": "J10",
+      "facet": "行動",
+      "pick": 3,
+      "correct": false
+    }
+  ],
+  "post": [],
+  "preScore": 0,
+  "postScore": "",
+  "maxScore": 8,
+  "stars": [],
+  "totalStars": "",
+  "restarts": 0,
+  "commit": "",
+  "commitPick": "",
+  "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+}
