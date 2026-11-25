@@ -11,6 +11,7 @@
 | 路徑 | 用途 |
 |---|---|
 | `index.html` | 問卷網頁（手機優先、單頁、不記名） |
+| `student.html` | 學生版課後問卷（研究用兩班；同 schema，靠 `event` 區分班別，見下方「學生版課後問卷」） |
 | `config.js` | 中繼網址 `window.FEEDBACK_ENDPOINT`；空字串＝尚未啟用，改用 Email 備援（811554006@gms.ndhu.edu.tw） |
 | `relay/Code.gs` | Google Apps Script 中繼：收 POST → 白名單驗證 → GitHub Contents API 寫入 `responses/` |
 | `relay/設定說明_AppsScript與GitHubToken.md` | 建 token、部署 Apps Script、**v2 改版後重新部署**、測試、換 token 的逐步說明 |
@@ -127,6 +128,21 @@
 - 組別：`schema`＝`webar-test-v1`、`group`＝`control`、`mode`＝`test` 三者都表示對照班；遊戲班仍是 `webar-game-v1`（`game/`）。
 - 計分只算 8 題：態度題（國小 E3、E7；國中 J3、J8）`correct` 一律 `null`，中繼重算 `preScore`／`postScore`。
 - `pick`、`commitPick` 都是原始索引（題目正解一律索引 0）。配對前後測用 `sid`（同一次作答）；`pid` 在「下一位同學」時會換新。
+
+## 學生版課後問卷（`student.html`，2026/11/25 新增；研究用兩班）
+
+網址：`https://rlirdo.github.io/serpentine-webar/feedback/student.html?event=活動代碼`
+
+- 給研究的對照班與遊戲班在**後測之後**填，入口在對照班 `test/` 完成頁與遊戲班研究模式（`?study=1`）結果頁的
+  〔📝 填課後問卷（約 3 分鐘）〕，按鈕會帶上該次測驗的活動代碼（例 `CTRL-E-20261201`、`GAME-E-20261201`），
+  以固定名稱的另一個分頁開啟，原完成頁／結果頁的〔下一位同學〕流程不受影響。
+- `event` 取自網址 `?event=`，只接受英數、底線、連字號、最多 40 字；沒帶或不合法時為 `STUDENT-TEST`。
+- **沿用 schema `webar-feedback-v2` 與同樣 16 個欄位**（中繼白名單不能加欄位，也不需要重新部署），所以學生版回覆同樣寫入 `responses/`；
+  **班別與學段靠 `event` 區分**（`CTRL-*`＝對照班、`GAME-*`＝遊戲班、`-E-`／`-J-`＝國小／國中；成人版固定 `SEET2026-A155-07`）。
+- 題目四部分與欄位對應同上表，題幹改為「上完這堂課後…」並改寫成學生用語；知識題 k1–k3 的選項順序與正解和成人版相同。
+- 不蒐集姓名、班級、座號、學校、email；**沒有 Email 備援**。上傳失敗時作答先存在手機 localStorage
+  （`serpentineWebAR.studentFeedback.pending.v1`），畫面提供〔再傳一次〕，下次開頁或回到線上時也會自動補傳。
+- 共用手機：送出成功後按〔下一位同學填寫〕清空表單，活動代碼不變；不顯示「已填過」提示。
 
 ## 舊版 v1（2026/10/22–10/28）
 

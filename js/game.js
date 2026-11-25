@@ -1222,6 +1222,8 @@ export function createGame({ stage, camera, renderer, hud, host }) {
         <p class="small">我的小行動：${commit}</p>
         <p class="small">${CREDIT}</p>
       </div>
+      <div class="row"><a class="btn gold" href="feedback/student.html?event=${encodeURIComponent(SS.event || St.DEFAULT_EVENT.game)}" target="serpentineStudentSurvey">📝 填課後問卷（約 3 分鐘）</a></div>
+      <p class="small" style="text-align:center">請先填問卷，填完再按〔下一位同學〕。</p>
       <div class="sec-title">前測 → 後測（同樣 10 題，只算 ${MAX} 題計分題）</div>
       <div class="cmp">
         <span>前測</span>${bar(preScore, MAX, "#94a3b8")}<b>${preScore} / ${MAX}</b>

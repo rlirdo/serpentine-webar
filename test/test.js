@@ -15,6 +15,10 @@ const P = St.readParams();
 let S = St.loadState(GROUP) || { stage: "start" };
 const save = () => St.saveState(GROUP, S);
 const MAX = () => St.maxScore(S.grade);
+// 學生版課後問卷（feedback/student.html，schema webar-feedback-v2，班別靠 event 區分）。
+// 開在固定名稱的另一個分頁：本頁完成畫面與〔重新開始（下一位同學）〕保持原樣；下一位同學再按時會重用同一個問卷分頁。
+const SURVEY_TARGET = "serpentineStudentSurvey";
+const surveyHref = (ev) => `../feedback/student.html?event=${encodeURIComponent(ev || St.DEFAULT_EVENT[GROUP])}`;
 
 St.onNetChange((s) => {
   const t = St.netText(s);
@@ -170,6 +174,8 @@ function viewDone() {
     </div>
     <p class="privacy">只計算 ${MAX()} 題有標準答案的題目；2 題態度題只看你的選擇，不算對錯。</p>
     <p>我的小行動：<b>${esc(ENDING.commits[S.commitPick] || "—")}</b></p>
+    <div class="row"><a class="btn gold" href="${surveyHref(S.event)}" target="${SURVEY_TARGET}">📝 填課後問卷（約 3 分鐘）</a></div>
+    <p class="privacy" style="text-align:center">請先填問卷，再玩遊戲</p>
     <div class="row"><a class="btn gold" href="../index.html">🎮 現在可以玩遊戲了</a></div>
   </div>
   <div class="sheet">
