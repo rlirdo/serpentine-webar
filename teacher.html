@@ -72,7 +72,8 @@
     中途重新整理或誤關網頁，再開同一網址會接續：前測做到哪題就從哪題接著做；闖關中斷會保留前測、從第 1 關重新闖關；後測與行動承諾從中斷處接著做。<br>
     無相機版：國小版 <a href="play.html?study=1&amp;grade=elem&amp;event=STUDY-GAME">play.html?study=1&amp;grade=elem&amp;event=STUDY-GAME</a>　國中版 <a href="play.html?study=1&amp;grade=junior&amp;event=STUDY-GAME">play.html?study=1&amp;grade=junior&amp;event=STUDY-GAME</a><br>
     AR 版（任務卡）：國小版 <a href="ar.html?study=1&amp;grade=elem&amp;event=STUDY-GAME">ar.html?study=1&amp;grade=elem&amp;event=STUDY-GAME</a>　國中版 <a href="ar.html?study=1&amp;grade=junior&amp;event=STUDY-GAME">ar.html?study=1&amp;grade=junior&amp;event=STUDY-GAME</a>
-    <p style="margin:10px 0 0"><b>兩班請用不同的活動代碼</b>（event，英數、底線與連字號，最多 40 字），例如對照班 <code>CTRL-E-20261201</code>、遊戲班 <code>GAME-E-20261201</code>；
+    <p style="margin:10px 0 0"><b>兩班請用不同的活動代碼</b>（event，英數、底線與連字號，最多 40 字）。命名規則：<code>組別-學段-施測日期</code>，組別 GAME＝遊戲班、CTRL＝對照班，學段 E＝國小、J＝國中，日期寫 8 碼；
+    例如 12 月 1 日國小兩班：對照班 <code>CTRL-E-20261201</code>、遊戲班 <code>GAME-E-20261201</code>，國中把 E 換成 J。同一天同學段若有兩個以上的同組班級，在最後加 <code>-2</code> 區分。
     不加 event 時，對照班預設 CTRL-TEST、遊戲班預設 STUDY-GAME。兩班作答都以不記名方式上傳（schema <code>webar-test-v1</code>，組別 control／game），
     存在 repo 的 <code>feedback/test/</code>；研究模式不會另外送一般遊戲的 <code>feedback/game/</code> 紀錄。
     同一支手機給下一位同學用時，對照班在完成頁按〔重新開始（下一位同學）〕，遊戲班在結果頁按〔下一位同學〕。</p>
