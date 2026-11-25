@@ -18,7 +18,8 @@ const MAX = () => St.maxScore(S.grade);
 // 學生版課後問卷（feedback/student.html，schema webar-feedback-v2，班別靠 event 區分）。
 // 開在固定名稱的另一個分頁：本頁完成畫面與〔重新開始（下一位同學）〕保持原樣；下一位同學再按時會重用同一個問卷分頁。
 const SURVEY_TARGET = "serpentineStudentSurvey";
-const surveyHref = (ev) => `../feedback/student.html?event=${encodeURIComponent(ev || St.DEFAULT_EVENT[GROUP])}`;
+// group=control：對照班填問卷時還沒玩遊戲，不顯示遊戲班才有的 TAM 題（2026/11/26）
+const surveyHref = (ev) => `../feedback/student.html?event=${encodeURIComponent(ev || St.DEFAULT_EVENT[GROUP])}&group=control`;
 
 St.onNetChange((s) => {
   const t = St.netText(s);

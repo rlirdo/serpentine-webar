@@ -1,6 +1,13 @@
 /**
  * WebAR 遊戲回饋問卷＋遊戲前後測作答 中繼（Google Apps Script 網頁應用程式）
  *
+ * ★ v6：2026/11/26 學生版課後問卷（feedback/student.html）遊戲班多 6 題 TAM（科技接受度）：
+ *   webar-feedback-v2 多收 6 個「選填」欄位 pe1,pe2,pe3（知覺易用性）、pu1,pu2,pu3（知覺有用性），1–5 整數。
+ *   6 個都沒給（undefined／null／空字串）時，行為與輸出和 v5 完全相同（輸出不含這些鍵）；
+ *   只要給了其中任何一個，6 個都必須是 1–5 整數，否則回錯誤；通過時依固定順序寫在 s_open 之後、ua 之前。
+ *   doGet 健康檢查多回 version: 6 與 feedback_optional。webar-game-v1、webar-game-v2、webar-test-v1 的行為完全不變。
+ *   貼上本檔後「需重新部署為新版本」：部署 → 管理部署作業 → 鉛筆（編輯）→ 版本選「新版本」→ 部署。
+ *   不可按「新增部署作業」（/exec 網址會改變）。未重新部署前，TAM 6 題會被 v5 白名單靜靜丟掉，其餘 16 題照常寫入。
  * ★ v5：2026/11/25 新增 schema webar-test-v1（研究用整份 10 題前後測，兩組共用）：
  *   group='control'：對照班「只有測驗」頁 test/index.html，不玩遊戲，mode 固定 'test'，不可帶星數；
  *   group='game'：遊戲研究模式 play.html／ar.html?study=1，mode 為 ar|play，後測必帶八關星數（1–3）與 restarts。
@@ -54,6 +61,10 @@ var FIELDS = ['schema', 'submitted_at', 'event',
   'i1', 'i2', 'i3', 'i_open',
   's1', 's2', 's3', 's_open',
   'ua'];
+// v6：學生版遊戲班的 TAM 6 題（選填；有給就 6 題都要 1–5 整數），寫在 s_open 之後、ua 之前
+var TAM = ['pe1', 'pe2', 'pe3', 'pu1', 'pu2', 'pu3'];
+var FIELDS_TAM = FIELDS.slice(0, FIELDS.length - 1).concat(TAM, ['ua']);
+var RELAY_VERSION = 6;
 
 function doPost(e) {
   try {
@@ -77,7 +88,7 @@ function doPost(e) {
     if (!token) return json_({ ok: false, error: '中繼尚未設定 GITHUB_TOKEN' });
 
     var ordered = {};
-    (isTest ? TEST_FIELDS : (isV2 ? GAME_FIELDS_V2 : (isGame ? GAME_FIELDS : FIELDS))).forEach(function (k) { ordered[k] = rec[k]; });
+    (isTest ? TEST_FIELDS : (isV2 ? GAME_FIELDS_V2 : (isGame ? GAME_FIELDS : fieldsFor_(rec)))).forEach(function (k) { ordered[k] = rec[k]; });
     var body = JSON.stringify(ordered, null, 2) + '\n';
 
     var url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME +
@@ -111,7 +122,8 @@ function doPost(e) {
 /** 瀏覽器直接開 /exec 網址時的健康檢查 */
 function doGet() {
   var hasToken = !!PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN');
-  return json_({ ok: true, service: 'webar-feedback-relay', schema: SCHEMA, schemas: [SCHEMA, GAME_SCHEMA, GAME_SCHEMA_V2, TEST_SCHEMA], token_set: hasToken });
+  return json_({ ok: true, service: 'webar-feedback-relay', schema: SCHEMA, schemas: [SCHEMA, GAME_SCHEMA, GAME_SCHEMA_V2, TEST_SCHEMA], token_set: hasToken,
+    version: RELAY_VERSION, feedback_optional: TAM.slice() });
 }
 
 // ---------------------------------------------------------------- 對照班只有測驗（webar-test-v1）
@@ -321,9 +333,23 @@ function clean_(d) {
     r[q] = v;
   }
   for (var m = 0; m < OPENS.length; m++) r[OPENS[m]] = str_(d[OPENS[m]], OPEN_MAX);
+  // v6：TAM 6 題選填。全部沒給 → 不加任何鍵（輸出同 v5）；給了任何一題 → 6 題都要 1–5 整數
+  var hasTam = TAM.some(function (t) { return d[t] !== undefined && d[t] !== null && d[t] !== ''; });
+  if (hasTam) {
+    for (var t = 0; t < TAM.length; t++) {
+      var tk = TAM[t];
+      var traw = d[tk];
+      var tv = (typeof traw === 'number' || (typeof traw === 'string' && /^\s*\d+\s*$/.test(traw))) ? Number(traw) : NaN;
+      if (!(tv >= 1 && tv <= 5 && Math.floor(tv) === tv)) return { error: '欄位 ' + tk + ' 必須是 1–5 的整數（TAM 6 題須一起作答）' };
+      r[tk] = tv;
+    }
+  }
   r.ua = str_(d.ua, 120);
   return r;
 }
+
+/** webar-feedback-v2 的輸出欄位：有 TAM 才用 FIELDS_TAM，否則與 v5 相同 */
+function fieldsFor_(rec) { return rec.pe1 !== undefined ? FIELDS_TAM : FIELDS; }
 
 function str_(s, n) { return (s === undefined || s === null) ? '' : String(s).trim().slice(0, n); }
 

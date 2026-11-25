@@ -4,6 +4,20 @@
 > token 只貼在兩個地方：GitHub 產生它的那一頁（看一次就關掉）、Apps Script 的「指令碼屬性」。
 > 不要貼進對話、Email、LINE、任何檔案或 repo。
 
+## ★★★★ v6：2026/11/26 學生問卷 TAM 欄位
+
+學生版課後問卷（`feedback/student.html`）的**遊戲班**多 6 題「對這個遊戲的看法」（TAM：`pe1,pe2,pe3,pu1,pu2,pu3`，1–5 整數）。
+`Code.gs` v6 把這 6 欄加進 `webar-feedback-v2` 的選填白名單；其他 schema（`webar-game-v1`、`webar-game-v2`、`webar-test-v1`）行為不變。
+
+1. 打開主帳號的 Apps Script 專案 `WebAR回饋問卷中繼_主帳號v5`。
+2. 把 repo 的 `feedback/relay/Code.gs`（v6）**全文**貼上，取代原本內容 → 儲存。
+3. 部署 → 管理部署作業 → 鉛筆（編輯）→ 版本選「**新版本**」（說明可填 `v6 2026/11/26 TAM`）→ 部署。
+   **不要按「新增部署作業」**；`/exec` 網址不變，`feedback/config.js` 不用改。
+4. 檢查：瀏覽器開 `/exec` 網址，應看到 `"version":6` 與 `"feedback_optional":["pe1","pe2","pe3","pu1","pu2","pu3"]`，`"token_set":true`。
+
+> ⚠️ **未重新部署前**，遊戲班的 TAM 6 題作答會被 v5 中繼**靜靜丟掉**（不會報錯），其餘 16 題照常寫入 `feedback/responses/`。
+> 所以請在遊戲班上課前完成重新部署。v5 程式保留在 `舊版/Code_v5.gs`。
+
 ## ★★★ 2026/11/25 v5：中繼改放主帳號（新專案、新網址）
 
 - 主遊戲（`feedback/config.js`）自 2026/11/25 起改指向**主帳號 Gmail** 的 Apps Script 專案

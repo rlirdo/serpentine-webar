@@ -74,7 +74,7 @@
 <div class="page"><div class="page-inner">
   <div class="kicker">課後問卷 · 墨玉晶格修復任務</div>
   <h1 class="hero-title">課後問卷（約 3 分鐘，不記名）</h1>
-  <p class="notice">上完這堂課，請你花 3 分鐘填這份問卷。問卷分<b>環境知識、環境態度、行動意向、科學探究</b>四部分，每部分 3 題選擇題（必填）＋1 題簡答（選填）。照你自己的想法作答就好，<b>不算成績</b>。簡答題<b>請不要寫自己或別人的姓名</b>。</p>
+  <p class="notice">上完這堂課，請你花 3 分鐘填這份問卷。問卷分<b>環境知識、環境態度、行動意向、科學探究</b>四部分，每部分 3 題選擇題（必填）＋1 題簡答（選填）<span id="tamIntro" hidden>；最後還有第五部分<b>對這個遊戲的看法</b> 6 題選擇題（必填）</span>。照你自己的想法作答就好，<b>不算成績</b>。簡答題<b>請不要寫自己或別人的姓名</b>。</p>
 
   <div id="setupNote" class="setup">問卷系統設定中：按送出後，作答會先存在這支手機，請告訴老師。</div>
   <div id="pendNote" class="msg info" role="status"></div>
@@ -107,7 +107,7 @@
 (function () {
   'use strict';
   var ENDPOINT = (window.FEEDBACK_ENDPOINT || '').trim();
-  var SCHEMA = 'webar-feedback-v2';          // 與成人版同一個 schema、同樣 16 個欄位；班別與學段靠 event 區分
+  var SCHEMA = 'webar-feedback-v2';          // 與成人版同一個 schema、同樣 16 個欄位（遊戲班另加 TAM 6 欄）；班別與學段靠 event 區分
   var DEFAULT_EVENT = 'STUDENT-TEST';
   var PEND_KEY = 'serpentineWebAR.studentFeedback.pending.v1';  // 上傳失敗的作答暫存
   var OPEN_MAX = 300;
@@ -120,6 +120,17 @@
     try { v = new URLSearchParams(location.search).get('event') || ''; } catch (e) { v = ''; }
     return /^[A-Za-z0-9_-]{1,40}$/.test(v) ? v : DEFAULT_EVENT;
   })();
+
+  // 班別：網址 ?group=game|control 優先；沒有時由活動代碼推斷（GAME- 開頭或 STUDY-GAME → 遊戲班），不分大小寫。
+  // 只有遊戲班多答 TAM 6 題（對照班填問卷時還沒玩遊戲）。
+  var GROUP = (function () {
+    var g = '';
+    try { g = (new URLSearchParams(location.search).get('group') || '').toLowerCase(); } catch (e) { g = ''; }
+    if (g === 'game' || g === 'control') return g;
+    var ev = EVENT.toUpperCase();
+    return (ev.indexOf('GAME-') === 0 || ev === 'STUDY-GAME') ? 'game' : '';
+  })();
+  var IS_GAME = GROUP === 'game';
 
   // 四部分 × 3 題選擇（必填）＋ 1 題簡答（選填）。選項順序固定，知識題以 A–D 送出；正解不放在本頁。
   var LIKERT_DESC = '上完這堂課之後，請選出最符合你想法的程度。';
@@ -148,6 +159,17 @@
       ['s3', '上完這堂課後，我想進一步了解或動手探究「把鎂離子補進晶格」這類問題。']
     ], open: ['s_open', '上完課後，你最想用實驗弄清楚的一個問題是什麼？', '寫一句話就可以'] }
   ];
+  // 第五部分（只給遊戲班，放在共同題之後）：TAM 知覺易用性 pe1–pe3、知覺有用性 pu1–pu3，改編自 Davis（1989）；題目為草稿，待專家審查
+  if (IS_GAME) SECTIONS.push(
+    { en: 'PART 5 · ABOUT THE GAME', title: '五、對這個遊戲的看法', desc: '玩過這個遊戲之後，請選出最符合你想法的程度。', type: 'likert', items: [
+      ['pe1', '我覺得這個 WebAR 遊戲很容易操作。'],
+      ['pe2', '我很快就學會怎麼玩這個遊戲。'],
+      ['pe3', '遊戲裡的說明和提示我看得懂。'],
+      ['pu1', '這個遊戲幫助我了解看不見的晶格和離子。'],
+      ['pu2', '用這個遊戲學習，比只聽講解更容易懂。'],
+      ['pu3', '我覺得這個遊戲對學習自然科學有幫助。']
+    ] });   // 本部分沒有簡答題
+  if (IS_GAME) $('tamIntro').hidden = false;
   var REQUIRED = [], OPENS = [], NUMS = {};
 
   function $(id) { return document.getElementById(id); }
@@ -155,7 +177,7 @@
 
   $('evtCode').textContent = EVENT;
 
-  // 建立題目（編號 1–16）
+  // 建立題目（編號 1–16；遊戲班接續 17–22）
   var n = 0, html = '';
   SECTIONS.forEach(function (sec) {
     html += '<div class="sec"><span class="en">' + esc(sec.en) + '</span><h2>' + esc(sec.title) + '</h2><p>' + esc(sec.desc) + '</p></div>';
@@ -177,6 +199,7 @@
         '<span class="req">必填</span></legend>' + opts + '</fieldset>';
     });
     var o = sec.open;
+    if (!o) return;
     n++; NUMS[o[0]] = n; OPENS.push(o[0]);
     html += '<div class="q" data-name="' + o[0] + '"><label class="lab" for="' + o[0] + '"><span class="num">' + n + '.</span>' +
       esc(o[1]) + '<span class="opt-tag">選填</span></label><textarea id="' + o[0] + '" maxlength="' + OPEN_MAX +
@@ -210,7 +233,7 @@
       p(t.getUTCHours()) + ':' + p(t.getUTCMinutes()) + ':' + p(t.getUTCSeconds()) + '+08:00';
   }
 
-  // 只產生中繼白名單欄位（順序同成人版）
+  // 只產生中繼白名單欄位（順序同成人版；遊戲班在 s_open 之後多 pe1–pu3，需中繼 v6）
   function collect() {
     var d = { schema: SCHEMA, submitted_at: taipeiISO(new Date()), event: EVENT };
     SECTIONS.forEach(function (sec) {
@@ -218,7 +241,7 @@
         var v = val(it[0]);
         d[it[0]] = sec.type === 'mc' ? v : (v ? parseInt(v, 10) : null);
       });
-      d[sec.open[0]] = $(sec.open[0]).value.trim().slice(0, OPEN_MAX);
+      if (sec.open) d[sec.open[0]] = $(sec.open[0]).value.trim().slice(0, OPEN_MAX);
     });
     d.ua = (navigator.userAgent || '').slice(0, 120);
     return d;
